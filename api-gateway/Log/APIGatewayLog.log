@@ -1,0 +1,571 @@
+05/07/2025 01:03:04 PM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 01:03:04 PM [INFO]: Environment: development
+05/07/2025 08:39:11 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 08:39:11 AM [INFO]: Environment: development
+05/07/2025 08:39:50 AM [INFO]: POST /api/auth/register
+05/07/2025 08:39:50 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 08:39:50 AM [DEBUG]: Matched service: /auth
+05/07/2025 08:39:50 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 08:39:50 AM [ERROR]: Received error response from http://192.168.1.16:8000: 500 Internal Server Error
+05/07/2025 08:40:30 AM [INFO]: POST /api/auth/register
+05/07/2025 08:40:30 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 08:40:30 AM [DEBUG]: Matched service: /auth
+05/07/2025 08:40:30 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 08:41:00 AM [ERROR]: Proxy error for /auth (http://192.168.1.16:8000): socket hang up
+05/07/2025 08:54:00 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 08:54:00 AM [INFO]: Environment: development
+05/07/2025 08:54:35 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 08:54:40 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 08:54:40 AM [INFO]: Environment: development
+05/07/2025 08:54:51 AM [INFO]: POST /api/auth/register
+05/07/2025 08:54:51 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 08:54:51 AM [DEBUG]: Matched service: /auth
+05/07/2025 08:54:51 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 08:55:21 AM [ERROR]: Proxy error for /auth (http://192.168.1.16:8000): socket hang up
+05/07/2025 08:56:11 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 08:56:18 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 08:56:18 AM [INFO]: Environment: development
+05/07/2025 08:58:34 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:00:29 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:00:29 AM [INFO]: Environment: development
+05/07/2025 09:00:44 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:05:54 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:05:54 AM [INFO]: Environment: development
+05/07/2025 09:06:04 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:07:23 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:07:23 AM [INFO]: Environment: development
+05/07/2025 09:07:37 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:08:41 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:08:41 AM [INFO]: Environment: development
+05/07/2025 09:08:52 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:13:15 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:13:15 AM [INFO]: Environment: development
+05/07/2025 09:13:25 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:14:35 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:14:35 AM [INFO]: Environment: development
+05/07/2025 09:14:48 AM [INFO]: POST /api/auth/register
+05/07/2025 09:14:48 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 09:14:48 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:14:48 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 09:15:18 AM [ERROR]: Proxy error for /auth (http://192.168.1.16:8000): socket hang up
+05/07/2025 09:25:07 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:28:05 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:28:05 AM [INFO]: Environment: development
+05/07/2025 09:30:03 AM [INFO]: POST /api/auth/login
+05/07/2025 09:30:03 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 09:30:03 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:30:03 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 09:30:03 AM [ERROR]: Received error response from http://192.168.1.16:8000: 401 Unauthorized
+05/07/2025 09:30:32 AM [INFO]: PUT /api/auth/register
+05/07/2025 09:30:32 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 09:30:32 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:30:32 AM [DEBUG]: Proxying PUT /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 09:30:32 AM [ERROR]: Received error response from http://192.168.1.16:8000: 405 Method Not Allowed
+05/07/2025 09:30:38 AM [INFO]: POST /api/auth/register
+05/07/2025 09:30:38 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 09:30:38 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:30:38 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 09:30:41 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:30:50 AM [INFO]: POST /api/auth/register
+05/07/2025 09:30:50 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 09:30:50 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:30:50 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 09:30:50 AM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 09:31:23 AM [INFO]: POST /api/auth/login
+05/07/2025 09:31:23 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 09:31:23 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:31:23 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 09:31:25 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:34:57 AM [INFO]: POST /api/auth/register
+05/07/2025 09:34:57 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 09:34:57 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:34:57 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 09:34:58 AM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 09:35:05 AM [INFO]: POST /api/auth/register
+05/07/2025 09:35:05 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 09:35:05 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:35:05 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 09:35:06 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:35:37 AM [INFO]: POST /api/auth/login
+05/07/2025 09:35:37 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 09:35:37 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:35:37 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 09:35:39 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:36:36 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:36:36 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:36:36 AM [DEBUG]: Matched service: /user
+05/07/2025 09:36:36 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:36:56 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:36:56 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:36:56 AM [DEBUG]: Matched service: /user
+05/07/2025 09:36:56 AM [ERROR]: Authentication failed: jwt malformed
+05/07/2025 09:37:48 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:37:48 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:37:48 AM [DEBUG]: Matched service: /user
+05/07/2025 09:37:48 AM [ERROR]: Authentication failed: jwt malformed
+05/07/2025 09:42:23 AM [INFO]: POST /api/auth/login
+05/07/2025 09:42:23 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 09:42:23 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:42:23 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 09:42:26 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:42:56 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:42:56 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:42:56 AM [DEBUG]: Matched service: /user
+05/07/2025 09:42:56 AM [ERROR]: Authentication failed: jwt malformed
+05/07/2025 09:44:41 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:45:15 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:45:15 AM [INFO]: Environment: development
+05/07/2025 09:45:18 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:45:18 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:45:18 AM [DEBUG]: Matched service: /user
+05/07/2025 09:45:18 AM [ERROR]: Authentication failed: jwt malformed
+05/07/2025 09:45:26 AM [INFO]: POST /api/auth/login
+05/07/2025 09:45:26 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 09:45:26 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:45:26 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 09:45:27 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:45:58 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:45:58 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:45:58 AM [DEBUG]: Matched service: /user
+05/07/2025 09:45:58 AM [ERROR]: Authentication failed: jwt malformed
+05/07/2025 09:46:28 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:28 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:28 AM [DEBUG]: Matched service: /user
+05/07/2025 09:46:28 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:46:33 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:33 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:33 AM [DEBUG]: Matched service: /user
+05/07/2025 09:46:33 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:46:46 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:46 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:46 AM [DEBUG]: Matched service: /user
+05/07/2025 09:46:46 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:46:53 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:53 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:46:53 AM [DEBUG]: Matched service: /user
+05/07/2025 09:46:53 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:47:14 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:47:14 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:47:14 AM [DEBUG]: Matched service: /user
+05/07/2025 09:47:14 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:47:23 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:47:23 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:47:23 AM [DEBUG]: Matched service: /user
+05/07/2025 09:47:23 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:47:31 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:47:31 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:47:31 AM [DEBUG]: Matched service: /user
+05/07/2025 09:47:31 AM [ERROR]: Authentication failed: Invalid authorization format
+05/07/2025 09:49:13 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:49:37 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:49:37 AM [INFO]: Environment: development
+05/07/2025 09:50:43 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:50:44 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:50:44 AM [INFO]: Environment: development
+05/07/2025 09:50:58 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:50:58 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:50:58 AM [DEBUG]: Matched service: /user
+05/07/2025 09:50:58 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:51:25 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:51:25 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:51:25 AM [DEBUG]: Matched service: /user
+05/07/2025 09:51:25 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:51:37 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:51:37 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:51:37 AM [DEBUG]: Matched service: /user
+05/07/2025 09:51:37 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:51:52 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:51:52 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:51:52 AM [DEBUG]: Matched service: /user
+05/07/2025 09:51:52 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:52:03 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:52:03 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:52:03 AM [DEBUG]: Matched service: /user
+05/07/2025 09:52:03 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:53:00 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:53:19 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:53:19 AM [INFO]: Environment: development
+05/07/2025 09:54:36 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:54:36 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:54:36 AM [DEBUG]: Matched service: /user
+05/07/2025 09:54:36 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:54:50 AM [INFO]: POST /api/auth/login
+05/07/2025 09:54:50 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 09:54:50 AM [DEBUG]: Matched service: /auth
+05/07/2025 09:54:50 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 09:54:51 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 09:55:02 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:02 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:02 AM [DEBUG]: Matched service: /user
+05/07/2025 09:55:02 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:55:13 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:13 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:13 AM [DEBUG]: Matched service: /user
+05/07/2025 09:55:13 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:55:16 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:16 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:16 AM [DEBUG]: Matched service: /user
+05/07/2025 09:55:16 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:55:26 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:26 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:26 AM [DEBUG]: Matched service: /user
+05/07/2025 09:55:26 AM [ERROR]: Authentication failed: No authorization header
+05/07/2025 09:55:40 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:40 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:55:40 AM [DEBUG]: Matched service: /user
+05/07/2025 09:55:40 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 09:59:06 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 09:59:21 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 09:59:21 AM [INFO]: Environment: development
+05/07/2025 09:59:34 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:59:34 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 09:59:34 AM [DEBUG]: Matched service: /user
+05/07/2025 09:59:34 AM [ERROR]: Authentication failed: JWT_SECRET not configured
+05/07/2025 10:01:23 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 10:01:33 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 10:01:33 AM [INFO]: Environment: development
+05/07/2025 10:01:43 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:01:43 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:01:43 AM [DEBUG]: Matched service: /user
+05/07/2025 10:01:43 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 10:05:38 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 10:05:46 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 10:05:46 AM [INFO]: Environment: development
+05/07/2025 10:06:33 AM [INFO]: POST /api/auth/login
+05/07/2025 10:06:33 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:06:33 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:06:33 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:06:36 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:06:56 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:06:56 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:06:56 AM [DEBUG]: Matched service: /user
+05/07/2025 10:06:56 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 10:07:35 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:07:35 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:07:35 AM [DEBUG]: Matched service: /user
+05/07/2025 10:07:35 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 10:13:02 AM [INFO]: POST /api/auth/login
+05/07/2025 10:13:02 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:13:02 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:13:02 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:13:03 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:13:31 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:13:31 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:13:31 AM [DEBUG]: Matched service: /user
+05/07/2025 10:13:31 AM [ERROR]: Authentication failed: Invalid authorization format
+05/07/2025 10:13:49 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:13:49 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:13:49 AM [DEBUG]: Matched service: /user
+05/07/2025 10:13:49 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 10:14:17 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:14:17 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:14:17 AM [DEBUG]: Matched service: /user
+05/07/2025 10:14:17 AM [ERROR]: Authentication failed: invalid signature
+05/07/2025 10:21:47 AM [INFO]: POST /api/auth/register
+05/07/2025 10:21:47 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 10:21:47 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:21:47 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 10:21:50 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:22:14 AM [INFO]: POST /api/auth/login
+05/07/2025 10:22:14 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:22:14 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:22:14 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:22:16 AM [ERROR]: Received error response from http://192.168.1.16:8000: 500 Internal Server Error
+05/07/2025 10:24:13 AM [INFO]: POST /api/auth/login
+05/07/2025 10:24:13 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:24:13 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:24:13 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:24:15 AM [ERROR]: Received error response from http://192.168.1.16:8000: 500 Internal Server Error
+05/07/2025 10:36:22 AM [INFO]: POST /api/auth/login
+05/07/2025 10:36:22 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:36:22 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:36:22 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:36:24 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:38:29 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:38:29 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:38:29 AM [DEBUG]: Matched service: /user
+05/07/2025 10:38:29 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:38:29 AM [DEBUG]: Proxying POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:8002/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:38:59 AM [ERROR]: Proxy error for /user (http://192.168.1.16:8002): socket hang up
+05/07/2025 10:42:43 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 10:42:56 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 10:42:56 AM [INFO]: Environment: development
+05/07/2025 10:43:07 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 10:43:15 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 10:43:15 AM [INFO]: Environment: development
+05/07/2025 10:43:37 AM [INFO]: POST /api/auth/login
+05/07/2025 10:43:37 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:43:37 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:43:37 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:43:39 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:43:54 AM [INFO]: POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:43:54 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:43:54 AM [DEBUG]: Matched service: /user
+05/07/2025 10:43:54 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:43:54 AM [DEBUG]: Proxying POST /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:5000/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:43:54 AM [ERROR]: Received error response from http://192.168.1.16:5000: 404 Not Found
+05/07/2025 10:44:03 AM [INFO]: PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:44:03 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:44:03 AM [DEBUG]: Matched service: /user
+05/07/2025 10:44:03 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:44:03 AM [DEBUG]: Proxying PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:5000/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:44:03 AM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 10:44:28 AM [INFO]: PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:44:28 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:44:28 AM [DEBUG]: Matched service: /user
+05/07/2025 10:44:28 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:44:28 AM [DEBUG]: Proxying PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:5000/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:44:28 AM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 10:45:14 AM [INFO]: PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:14 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:14 AM [DEBUG]: Matched service: /user
+05/07/2025 10:45:14 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:45:14 AM [DEBUG]: Proxying PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:5000/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:14 AM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 10:45:39 AM [INFO]: POST /api/auth/register
+05/07/2025 10:45:39 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 10:45:39 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:45:39 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 10:45:39 AM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 10:45:47 AM [INFO]: PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:47 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:47 AM [DEBUG]: Matched service: /user
+05/07/2025 10:45:47 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:45:47 AM [DEBUG]: Proxying PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:5000/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:48 AM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 10:45:58 AM [INFO]: PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:58 AM [DEBUG]: Processing path: /user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:58 AM [DEBUG]: Matched service: /user
+05/07/2025 10:45:58 AM [INFO]: Authentication successful for user: la011@outdid.com
+05/07/2025 10:45:58 AM [DEBUG]: Proxying PUT /api/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8 to http://192.168.1.16:5000/user/profile/userId=59f5e8d6-0490-40af-aa5b-b7a6f83a48e8
+05/07/2025 10:45:58 AM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 10:47:10 AM [INFO]: POST /api/auth/register
+05/07/2025 10:47:10 AM [DEBUG]: Processing path: /auth/register
+05/07/2025 10:47:10 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:47:10 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 10:47:13 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:47:51 AM [INFO]: POST /api/auth/login
+05/07/2025 10:47:51 AM [DEBUG]: Processing path: /auth/login
+05/07/2025 10:47:51 AM [DEBUG]: Matched service: /auth
+05/07/2025 10:47:51 AM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 10:47:52 AM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 10:48:05 AM [INFO]: PUT /api/user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:48:05 AM [DEBUG]: Processing path: /user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:48:05 AM [DEBUG]: Matched service: /user
+05/07/2025 10:48:05 AM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 10:48:05 AM [DEBUG]: Proxying PUT /api/user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:48:05 AM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 10:48:59 AM [INFO]: GET /api/user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:48:59 AM [DEBUG]: Processing path: /user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:48:59 AM [DEBUG]: Matched service: /user
+05/07/2025 10:48:59 AM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 10:48:59 AM [DEBUG]: Proxying GET /api/user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:48:59 AM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 10:49:36 AM [INFO]: GET /api/user/profile?userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:49:36 AM [DEBUG]: Processing path: /user/profile?userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:49:36 AM [DEBUG]: Matched service: /user
+05/07/2025 10:49:36 AM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 10:49:36 AM [DEBUG]: Proxying GET /api/user/profile?userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile?userId=1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 10:49:36 AM [ERROR]: Received error response from http://192.168.1.16:5000: 404 Not Found
+05/07/2025 10:50:00 AM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 04:20:33 PM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 04:20:33 PM [INFO]: Environment: development
+05/07/2025 04:20:50 PM [INFO]: GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:20:50 PM [DEBUG]: Processing path: /user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:20:50 PM [DEBUG]: Matched service: /user
+05/07/2025 04:20:50 PM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 04:20:50 PM [DEBUG]: Proxying GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:20:50 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:25:17 PM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 04:25:34 PM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 04:25:34 PM [INFO]: Environment: development
+05/07/2025 04:25:40 PM [INFO]: GET /api/user/profile/ea9e0c1c-c62b-4284-bd15-8d367816eedc
+05/07/2025 04:25:40 PM [DEBUG]: Processing path: /user/profile/ea9e0c1c-c62b-4284-bd15-8d367816eedc
+05/07/2025 04:25:40 PM [DEBUG]: Matched service: /user
+05/07/2025 04:25:40 PM [ERROR]: Authentication failed: No authorization header
+05/07/2025 04:26:18 PM [INFO]: GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:26:18 PM [DEBUG]: Processing path: /user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:26:18 PM [DEBUG]: Matched service: /user
+05/07/2025 04:26:18 PM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 04:26:18 PM [DEBUG]: Proxying GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.22:5002/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:26:48 PM [ERROR]: Proxy error for /user (http://192.168.1.22:5002): socket hang up
+05/07/2025 04:27:12 PM [INFO]: SIGTERM signal received: closing HTTP server
+05/07/2025 04:27:19 PM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+05/07/2025 04:27:19 PM [INFO]: Environment: development
+05/07/2025 04:27:43 PM [INFO]: PUT /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:27:43 PM [DEBUG]: Processing path: /user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:27:43 PM [DEBUG]: Matched service: /user
+05/07/2025 04:27:43 PM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 04:27:43 PM [DEBUG]: Proxying PUT /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:27:43 PM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 04:29:34 PM [INFO]: PUT /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:29:34 PM [DEBUG]: Processing path: /user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:29:34 PM [DEBUG]: Matched service: /user
+05/07/2025 04:29:34 PM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 04:29:34 PM [DEBUG]: Proxying PUT /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:29:34 PM [ERROR]: Received error response from http://192.168.1.16:5000: 400 Bad Request
+05/07/2025 04:32:45 PM [INFO]: GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:32:45 PM [DEBUG]: Processing path: /user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:32:45 PM [DEBUG]: Matched service: /user
+05/07/2025 04:32:45 PM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 04:32:45 PM [DEBUG]: Proxying GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:32:45 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:33:15 PM [INFO]: GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:33:15 PM [DEBUG]: Processing path: /user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:33:15 PM [DEBUG]: Matched service: /user
+05/07/2025 04:33:15 PM [INFO]: Authentication successful for user: jane.doe@example.com
+05/07/2025 04:33:15 PM [DEBUG]: Proxying GET /api/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415 to http://192.168.1.16:5000/user/profile/1edca66e-9ea6-427f-b34b-fd8ed17a3415
+05/07/2025 04:33:15 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:36:06 PM [INFO]: POST /api/auth/register
+05/07/2025 04:36:06 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 04:36:06 PM [DEBUG]: Matched service: /auth
+05/07/2025 04:36:06 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 04:36:08 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 04:36:22 PM [INFO]: POST /api/auth/login
+05/07/2025 04:36:22 PM [DEBUG]: Processing path: /auth/login
+05/07/2025 04:36:22 PM [DEBUG]: Matched service: /auth
+05/07/2025 04:36:22 PM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 04:36:24 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 04:37:13 PM [INFO]: GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:37:13 PM [DEBUG]: Processing path: /user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:37:13 PM [DEBUG]: Matched service: /user
+05/07/2025 04:37:13 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:37:13 PM [DEBUG]: Proxying GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22 to http://192.168.1.16:5000/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:37:14 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:37:52 PM [INFO]: GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:37:52 PM [DEBUG]: Processing path: /user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:37:52 PM [DEBUG]: Matched service: /user
+05/07/2025 04:37:52 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:37:52 PM [DEBUG]: Proxying GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22 to http://192.168.1.16:5000/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:37:52 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:40:23 PM [INFO]: GET /api/user/profile/%2282c9bb15-cc75-49a4-9be7-10669c16ac22%22
+05/07/2025 04:40:23 PM [DEBUG]: Processing path: /user/profile/%2282c9bb15-cc75-49a4-9be7-10669c16ac22%22
+05/07/2025 04:40:23 PM [DEBUG]: Matched service: /user
+05/07/2025 04:40:23 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:40:23 PM [DEBUG]: Proxying GET /api/user/profile/%2282c9bb15-cc75-49a4-9be7-10669c16ac22%22 to http://192.168.1.16:5000/user/profile/%2282c9bb15-cc75-49a4-9be7-10669c16ac22%22
+05/07/2025 04:40:23 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:42:15 PM [INFO]: GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:42:15 PM [DEBUG]: Processing path: /user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:42:15 PM [DEBUG]: Matched service: /user
+05/07/2025 04:42:15 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:42:15 PM [DEBUG]: Proxying GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22 to http://192.168.1.16:5000/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:42:15 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:43:47 PM [INFO]: POST /api/auth/register
+05/07/2025 04:43:47 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 04:43:47 PM [DEBUG]: Matched service: /auth
+05/07/2025 04:43:47 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 04:43:47 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 04:48:32 PM [INFO]: GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:48:32 PM [DEBUG]: Processing path: /user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:48:32 PM [DEBUG]: Matched service: /user
+05/07/2025 04:48:32 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:48:32 PM [DEBUG]: Proxying GET /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22 to http://192.168.1.16:5000/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:48:32 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:50:02 PM [INFO]: PUT /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:50:02 PM [DEBUG]: Processing path: /user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:50:02 PM [DEBUG]: Matched service: /user
+05/07/2025 04:50:02 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:50:02 PM [DEBUG]: Proxying PUT /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22 to http://192.168.1.16:5000/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:50:03 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 04:50:13 PM [INFO]: PUT /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:50:13 PM [DEBUG]: Processing path: /user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:50:13 PM [DEBUG]: Matched service: /user
+05/07/2025 04:50:13 PM [INFO]: Authentication successful for user: Vivek@example.com
+05/07/2025 04:50:13 PM [DEBUG]: Proxying PUT /api/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22 to http://192.168.1.16:5000/user/profile/82c9bb15-cc75-49a4-9be7-10669c16ac22
+05/07/2025 04:50:13 PM [ERROR]: Received error response from http://192.168.1.16:5000: 500 Internal Server Error
+05/07/2025 05:22:49 PM [INFO]: POST /api/auth/register
+05/07/2025 05:22:49 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:22:49 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:22:49 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:22:52 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 05:39:30 PM [INFO]: POST /api/auth/register
+05/07/2025 05:39:30 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:39:30 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:39:30 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:39:33 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 05:44:15 PM [INFO]: POST /api/auth/register
+05/07/2025 05:44:15 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:44:15 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:44:15 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:44:16 PM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 05:44:43 PM [INFO]: POST /api/auth/register
+05/07/2025 05:44:43 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:44:43 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:44:43 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:44:43 PM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 05:45:49 PM [INFO]: POST /api/auth/register
+05/07/2025 05:45:49 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:45:49 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:45:49 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:45:49 PM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 05:46:08 PM [INFO]: POST /api/auth/register
+05/07/2025 05:46:08 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:46:08 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:46:08 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:46:10 PM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 05:46:33 PM [INFO]: POST /api/auth/register
+05/07/2025 05:46:33 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:46:33 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:46:33 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:46:34 PM [ERROR]: Received error response from http://192.168.1.16:8000: 400 Bad Request
+05/07/2025 05:46:50 PM [INFO]: POST /api/auth/register
+05/07/2025 05:46:50 PM [DEBUG]: Processing path: /auth/register
+05/07/2025 05:46:50 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:46:50 PM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+05/07/2025 05:46:51 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+05/07/2025 05:51:50 PM [INFO]: POST /api/auth/login
+05/07/2025 05:51:50 PM [DEBUG]: Processing path: /auth/login
+05/07/2025 05:51:50 PM [DEBUG]: Matched service: /auth
+05/07/2025 05:51:50 PM [DEBUG]: Proxying POST /api/auth/login to http://192.168.1.16:8000/auth/login
+05/07/2025 05:51:52 PM [SUCCESS]: Received response from http://192.168.1.16:8000: 200
+07/07/2025 10:45:18 AM [INFO]: SIGTERM signal received: closing HTTP server
+07/07/2025 10:45:49 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+07/07/2025 10:45:49 AM [INFO]: Environment: development
+07/07/2025 10:46:45 AM [INFO]: POST /api/auth/register
+07/07/2025 10:46:45 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 10:46:45 AM [DEBUG]: Matched service: /auth
+07/07/2025 10:46:45 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.16:8000/auth/register
+07/07/2025 10:46:46 AM [ERROR]: Received error response from http://192.168.1.16:8000: 500 Internal Server Error
+07/07/2025 10:48:06 AM [INFO]: SIGTERM signal received: closing HTTP server
+07/07/2025 10:48:25 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+07/07/2025 10:48:25 AM [INFO]: Environment: development
+07/07/2025 10:50:31 AM [INFO]: POST /api/auth/register
+07/07/2025 10:50:31 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 10:50:31 AM [DEBUG]: Matched service: /auth
+07/07/2025 10:50:31 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.38:8000/auth/register
+07/07/2025 10:51:01 AM [ERROR]: Proxy error for /auth (http://192.168.1.38:8000): socket hang up
+07/07/2025 11:00:45 AM [INFO]: POST /api/auth/register
+07/07/2025 11:00:45 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 11:00:45 AM [DEBUG]: Matched service: /auth
+07/07/2025 11:00:45 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.38:8000/auth/register
+07/07/2025 11:01:15 AM [ERROR]: Proxy error for /auth (http://192.168.1.38:8000): socket hang up
+07/07/2025 11:02:15 AM [INFO]: POST /api/auth/register
+07/07/2025 11:02:15 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 11:02:15 AM [DEBUG]: Matched service: /auth
+07/07/2025 11:02:15 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.38:8000/auth/register
+07/07/2025 11:02:45 AM [ERROR]: Proxy error for /auth (http://192.168.1.38:8000): socket hang up
+07/07/2025 11:04:52 AM [INFO]: POST /api/auth/register
+07/07/2025 11:04:52 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 11:04:52 AM [DEBUG]: Matched service: /auth
+07/07/2025 11:04:52 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.38:8000/auth/register
+07/07/2025 11:05:22 AM [ERROR]: Proxy error for /auth (http://192.168.1.38:8000): socket hang up
+07/07/2025 11:05:33 AM [INFO]: SIGTERM signal received: closing HTTP server
+07/07/2025 11:05:47 AM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+07/07/2025 11:05:47 AM [INFO]: Environment: development
+07/07/2025 11:08:15 AM [INFO]: POST /api/auth/register
+07/07/2025 11:08:15 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 11:08:15 AM [DEBUG]: Matched service: /auth
+07/07/2025 11:08:15 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.4:8000/auth/register
+07/07/2025 11:08:16 AM [ERROR]: Proxy error for /auth (http://192.168.1.4:8000): socket hang up
+07/07/2025 11:39:36 AM [INFO]: POST /api/auth/register
+07/07/2025 11:39:36 AM [DEBUG]: Processing path: /auth/register
+07/07/2025 11:39:36 AM [DEBUG]: Matched service: /auth
+07/07/2025 11:39:36 AM [DEBUG]: Proxying POST /api/auth/register to http://192.168.1.4:8000/auth/register
+07/07/2025 11:40:06 AM [ERROR]: Proxy error for /auth (http://192.168.1.4:8000): socket hang up
+07/07/2025 12:22:41 PM [INFO]: SIGTERM signal received: closing HTTP server
+07/07/2025 12:22:57 PM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
+07/07/2025 12:22:57 PM [INFO]: Environment: development
+07/07/2025 12:31:02 PM [INFO]: GET /api/user/profile/70553b28-5d7c-4bf4-be9d-3b75b9a20ccf
+07/07/2025 12:31:02 PM [DEBUG]: Processing path: /user/profile/70553b28-5d7c-4bf4-be9d-3b75b9a20ccf
+07/07/2025 12:31:02 PM [DEBUG]: Matched service: /user
+07/07/2025 12:31:02 PM [ERROR]: Authentication failed: jwt expired
