@@ -55,6 +55,20 @@ services:
       - NODE_ENV=development
     restart: unless-stopped
 
+  digikey-service:
+    build:
+      context: ./services/digikey_service
+      dockerfile: Dockerfile
+    image: digikey-service
+    container_name: digikey-service
+    networks:
+      - appnet
+    ports:
+      - "8009:8009"
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
 networks:
   appnet:
     driver: bridge
