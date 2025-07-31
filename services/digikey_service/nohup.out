@@ -1,0 +1,48 @@
+30/07/2025 15:42:41 [INFO]: [38;5;214mStarting DigiKey Service...[0m
+30/07/2025 15:42:41 [INFO]: [38;5;214mConnecting to MongoDB...[0m
+30/07/2025 15:42:42 [INFO]: [38;5;214mSuccessfully connected to MongoDB database: digikey_db[0m
+30/07/2025 15:42:42 [SUCCESS]: [32mDigiKey Service is running on http://localhost:4000[0m
+30/07/2025 15:42:42 [INFO]: [38;5;214mEnvironment: development[0m
+30/07/2025 15:42:42 [INFO]: [38;5;214mProcess ID: 77880[0m
+30/07/2025 15:42:42 [INFO]: [38;5;214mService is ready to accept requests[0m
+30/07/2025 15:42:58 [INFO]: [38;5;214mPOST /DigiKey/api/search - ::1[0m
+30/07/2025 15:42:58 [ERROR]: [31m404 - Route not found: POST /DigiKey/api/search[0m
+30/07/2025 15:42:58 [ERROR]: [31mPOST /DigiKey/api/search - 404 - 5ms - ::1[0m
+30/07/2025 15:43:09 [INFO]: [38;5;214mPOST /DigiKey/search - ::1[0m
+30/07/2025 15:43:09 [INFO]: [38;5;214mReceived product search request from ::1[0m
+30/07/2025 15:43:09 [INFO]: [38;5;214mProcessing search request for query: "resistor"[0m
+30/07/2025 15:43:09 [INFO]: [38;5;214mStarting product search and store operation for: "resistor"[0m
+30/07/2025 15:43:09 [INFO]: [38;5;214mRequesting new DigiKey access token...[0m
+30/07/2025 15:43:10 [SUCCESS]: [32mSuccessfully obtained DigiKey access token[0m
+30/07/2025 15:43:10 [INFO]: [38;5;214mSearching DigiKey API for: "resistor"[0m
+30/07/2025 15:43:11 [WARN]: [33mDigiKey API call failed: Request failed with status code 404. Using mock data.[0m
+30/07/2025 15:43:11 [INFO]: [38;5;214mGenerated 3 mock products for query: "resistor"[0m
+30/07/2025 15:43:11 [INFO]: [38;5;214mStoring 3 products in MongoDB...[0m
+30/07/2025 15:43:11 [SUCCESS]: [32mSuccessfully stored products - Inserted: 0, Updated: 3[0m
+30/07/2025 15:43:11 [SUCCESS]: [32mCompleted search and store operation for: "resistor"[0m
+30/07/2025 15:43:11 [INFO]: [38;5;214mSearch request completed in 1625ms. Found 3 products[0m
+30/07/2025 15:43:11 [INFO]: [38;5;214mPOST /DigiKey/search - 200 - 1627ms - ::1[0m
+30/07/2025 15:43:32 [INFO]: [38;5;214mPOST /DigiKey/search - ::1[0m
+30/07/2025 15:43:32 [INFO]: [38;5;214mReceived product search request from ::1[0m
+30/07/2025 15:43:32 [INFO]: [38;5;214mProcessing search request for query: "resistor"[0m
+30/07/2025 15:43:32 [INFO]: [38;5;214mStarting product search and store operation for: "resistor"[0m
+30/07/2025 15:43:32 [INFO]: [38;5;214mSearching DigiKey API for: "resistor"[0m
+30/07/2025 15:43:33 [WARN]: [33mDigiKey API call failed: Request failed with status code 404. Using mock data.[0m
+30/07/2025 15:43:33 [INFO]: [38;5;214mGenerated 3 mock products for query: "resistor"[0m
+30/07/2025 15:43:33 [INFO]: [38;5;214mStoring 3 products in MongoDB...[0m
+30/07/2025 15:43:33 [SUCCESS]: [32mSuccessfully stored products - Inserted: 0, Updated: 3[0m
+30/07/2025 15:43:33 [SUCCESS]: [32mCompleted search and store operation for: "resistor"[0m
+30/07/2025 15:43:33 [INFO]: [38;5;214mSearch request completed in 1061ms. Found 3 products[0m
+30/07/2025 15:43:33 [INFO]: [38;5;214mPOST /DigiKey/search - 200 - 1063ms - ::1[0m
+30/07/2025 15:44:34 [INFO]: [38;5;214mPOST /DigiKey/search - ::1[0m
+30/07/2025 15:44:34 [INFO]: [38;5;214mReceived product search request from ::1[0m
+30/07/2025 15:44:34 [INFO]: [38;5;214mProcessing search request for query: "resistor"[0m
+30/07/2025 15:44:34 [INFO]: [38;5;214mStarting product search and store operation for: "resistor"[0m
+30/07/2025 15:44:34 [INFO]: [38;5;214mSearching DigiKey API for: "resistor"[0m
+30/07/2025 15:44:35 [WARN]: [33mDigiKey API call failed: Request failed with status code 404. Using mock data.[0m
+30/07/2025 15:44:35 [INFO]: [38;5;214mGenerated 3 mock products for query: "resistor"[0m
+30/07/2025 15:44:35 [INFO]: [38;5;214mStoring 3 products in MongoDB...[0m
+30/07/2025 15:44:35 [SUCCESS]: [32mSuccessfully stored products - Inserted: 0, Updated: 3[0m
+30/07/2025 15:44:35 [SUCCESS]: [32mCompleted search and store operation for: "resistor"[0m
+30/07/2025 15:44:35 [INFO]: [38;5;214mSearch request completed in 1000ms. Found 3 products[0m
+30/07/2025 15:44:35 [INFO]: [38;5;214mPOST /DigiKey/search - 200 - 1002ms - ::1[0m
