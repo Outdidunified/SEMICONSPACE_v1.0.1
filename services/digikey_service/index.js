@@ -39,7 +39,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/DigiKey', productRoutes);
+app.use('/digikey', productRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

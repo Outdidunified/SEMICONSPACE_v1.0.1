@@ -31,4 +31,8 @@ module.exports = {
     target: process.env.NOTIFICATION_SERVICE_URL || 'http://172.232.110.10:8008',
     protected: true,
   },
+  '/digikey': {
+    target: process.env.DIGIKEY_SERVICE_URL || 'http://172.232.110.10:8009',
+    protected: false,
+  },
 };
