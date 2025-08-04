@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { connectToDatabase } = require('./config/db');
 const productRoutes = require('./routes/productRoutes');
-const { loggerInfo, loggerError, loggerSuccess } = require('./utils/logger');
+const { loggerInfo, loggerError, loggerSuccess, loggerWarn } = require('./utils/logger');
 
 // Create Express application
 const app = express();
@@ -17,8 +17,66 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-app.use(express.json({ limit: '10mb' }));
+// Middleware to skip JSON parsing for GET requests with bodies
+app.use((req, res, next) => {
+    if (req.method === 'GET' && req.get('Content-Length') && req.get('Content-Length') !== '0') {
+        loggerWarn(`GET request with body detected: ${req.method} ${req.originalUrl}, Content-Length: ${req.get('Content-Length')}`);
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid request',
+            message: 'GET requests should not include a request body.',
+            details: 'GET requests are for retrieving data and should not contain request bodies. Use query parameters instead.',
+            timestamp: new Date().toISOString()
+        });
+    }
+    next();
+});
+
+// JSON parsing middleware with error handling
+app.use(express.json({
+    limit: '10mb',
+    verify: (req, res, buf, encoding) => {
+        // Store raw body for debugging if needed
+        req.rawBody = buf;
+    }
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// JSON parsing error handler middleware
+app.use((error, req, res, next) => {
+    if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+        loggerError(`JSON parsing error from ${req.ip}: ${error.message}`);
+        loggerError(`Request URL: ${req.method} ${req.originalUrl}`);
+        loggerError(`Content-Type: ${req.get('Content-Type')}`);
+        loggerError(`Content-Length: ${req.get('Content-Length')}`);
+
+        // Log raw body if available for debugging
+        if (req.rawBody) {
+            loggerError(`Raw body (first 200 chars): ${req.rawBody.toString().substring(0, 200)}`);
+        }
+
+        // Special handling for GET requests with bodies
+        if (req.method === 'GET') {
+            loggerWarn(`GET request should not have a request body: ${req.method} ${req.originalUrl}`);
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid request',
+                message: 'GET requests should not include a request body.',
+                details: 'Remove the request body or use a different HTTP method (POST, PUT, etc.)',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        return res.status(400).json({
+            success: false,
+            error: 'Invalid JSON',
+            message: 'The request body contains invalid JSON. Please check your JSON syntax.',
+            details: 'Common issues: missing quotes, trailing commas, or incomplete JSON structure',
+            timestamp: new Date().toISOString()
+        });
+    }
+    next(error);
+});
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -74,13 +132,46 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((error, req, res, next) => {
     loggerError(`Global error handler: ${error.message}`);
+    loggerError(`Error type: ${error.constructor.name}`);
+    loggerError(`Request: ${req.method} ${req.originalUrl}`);
     loggerError(`Stack trace: ${error.stack}`);
 
-    res.status(500).json({
+    // Handle different types of errors
+    let statusCode = 500;
+    let errorMessage = 'An unexpected error occurred';
+    let errorType = 'Internal server error';
+
+    if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+        // JSON parsing error (should be caught by earlier middleware, but just in case)
+        statusCode = 400;
+        errorType = 'JSON parsing error';
+        errorMessage = 'Invalid JSON in request body';
+    } else if (error.name === 'ValidationError') {
+        // Validation errors
+        statusCode = 400;
+        errorType = 'Validation error';
+        errorMessage = error.message;
+    } else if (error.name === 'CastError') {
+        // Database casting errors
+        statusCode = 400;
+        errorType = 'Invalid data format';
+        errorMessage = 'Invalid data format provided';
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        // Network/connection errors
+        statusCode = 503;
+        errorType = 'Service unavailable';
+        errorMessage = 'External service temporarily unavailable';
+    }
+
+    res.status(statusCode).json({
         success: false,
-        error: 'Internal server error',
-        message: 'An unexpected error occurred',
-        timestamp: new Date().toISOString()
+        error: errorType,
+        message: errorMessage,
+        timestamp: new Date().toISOString(),
+        ...(process.env.NODE_ENV === 'development' && {
+            details: error.message,
+            stack: error.stack
+        })
     });
 });
 
