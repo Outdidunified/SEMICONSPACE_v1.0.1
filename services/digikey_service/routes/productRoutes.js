@@ -24,7 +24,7 @@ router.post('/search/keyword', async (req, res) => {
  * GET /api/products/:productNumber
  * Get product details from DigiKey API by product number and store in MongoDB
  */
-router.get('/products/:productNumber/productdetails', async (req, res) => {
+router.get('/products/:productNumber(*)/productdetails', async (req, res) => {
     await productController.getProductDetailsByNumber(req, res);
 });
 
@@ -56,13 +56,22 @@ router.get('/', (req, res) => {
         description: 'Microservice for integrating with DigiKey API and managing product data',
         endpoints: {
             'POST /api/search': 'Search products using DigiKey API',
-            'GET /api/products': 'Get stored products from database',
+            'GET /api/products/:productNumber/productdetails': 'Get product details from DigiKey API by product number',
             'GET /api/health': 'Health check endpoint',
             'GET /api/stats': 'Get product statistics',
+            'GET /api/products/v4/search/categories': 'Get product categories from DigiKey API',
             'GET /api/': 'API information'
         },
         timestamp: new Date().toISOString()
     });
+});
+
+/**
+ * GET /api/products/v4/search/categories
+ * Get categories endpoint returning static response
+ */
+router.get('/products/v4/search/categories', async (req, res) => {
+    await productController.getCategories(req, res);
 });
 
 module.exports = router;

@@ -245,6 +245,24 @@ class ProductController {
                 });
             }
 
+            // Fetch categories and build map
+            const categories = await this.digiKeyService.fetchCategories();
+            const categoryMap = this.digiKeyService.buildCategoryMap(categories);
+
+            // Determine leaf categoryId for hierarchy
+            let leafCategoryId = productDetails.Category?.CategoryId;
+
+            if (productDetails.Category?.Children && productDetails.Category.Children.length > 0) {
+                // Use first child category as leaf category
+                leafCategoryId = productDetails.Category.Children[0].CategoryId;
+            }
+
+            // Get category hierarchy for product using leaf categoryId
+            const categoryHierarchy = this.digiKeyService.getCategoryHierarchy(leafCategoryId, categoryMap);
+
+            // Add categoryHierarchy to productDetails
+            productDetails.categoryHierarchy = categoryHierarchy;
+
             return res.status(200).json({
                 success: true,
                 product: productDetails,
@@ -257,6 +275,25 @@ class ProductController {
                 success: false,
                 error: 'Internal server error',
                 message: 'An error occurred while fetching product details',
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+    /**
+     * Get categories endpoint
+     * GET /api/products/v4/search/categories
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+     */
+    async getCategories(req, res) {
+        try {
+            const categories = await this.digiKeyService.getCategories();
+            return res.status(200).json(categories);
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                error: 'Internal server error',
+                message: 'An error occurred while fetching categories',
                 timestamp: new Date().toISOString()
             });
         }
