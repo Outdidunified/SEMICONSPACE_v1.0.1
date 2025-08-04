@@ -17,6 +17,17 @@ class ProductController {
             const startTime = Date.now();
             loggerInfo(`Received product search request from ${req.ip}`);
 
+            // Validate request body exists
+            if (!req.body || typeof req.body !== 'object') {
+                loggerWarn('Search request has invalid or missing request body');
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid request body',
+                    message: 'Request body must be valid JSON with a query parameter',
+                    example: { query: "your search term" }
+                });
+            }
+
             // Validate request body
             const { query } = req.body;
 
@@ -25,7 +36,8 @@ class ProductController {
                 return res.status(400).json({
                     success: false,
                     error: 'Query parameter is required',
-                    message: 'Please provide a search query in the request body'
+                    message: 'Please provide a search query in the request body',
+                    example: { query: "your search term" }
                 });
             }
 
@@ -139,6 +151,18 @@ class ProductController {
         try {
             loggerInfo('Health check request received');
 
+            // Test database connection
+            let dbStatus = 'unknown';
+            try {
+                const { getCollection } = require('../config/db');
+                const collection = getCollection('products');
+                await collection.findOne({}, { limit: 1 });
+                dbStatus = 'connected';
+            } catch (dbError) {
+                dbStatus = 'disconnected';
+                loggerWarn(`Database health check failed: ${dbError.message}`);
+            }
+
             // Basic health check response
             const healthStatus = {
                 success: true,
@@ -148,7 +172,18 @@ class ProductController {
                 timestamp: new Date().toISOString(),
                 uptime: process.uptime(),
                 memory: process.memoryUsage(),
-                environment: process.env.NODE_ENV || 'development'
+                environment: process.env.NODE_ENV || 'development',
+                database: {
+                    status: dbStatus,
+                    collection: 'products'
+                },
+                endpoints: {
+                    'POST /digikey/search/keyword': 'Search products',
+                    'GET /digikey/products/:productNumber/productdetails': 'Get product details',
+                    'GET /digikey/health': 'Health check',
+                    'GET /digikey/stats': 'Statistics',
+                    'GET /digikey/products/v4/search/categories': 'Categories'
+                }
             };
 
             return res.status(200).json(healthStatus);
@@ -287,13 +322,59 @@ class ProductController {
      */
     async getCategories(req, res) {
         try {
-            const categories = await this.digiKeyService.getCategories();
-            return res.status(200).json(categories);
+            loggerInfo('Categories request received');
+
+            const categoriesData = await this.digiKeyService.getCategories();
+
+            // Store categories in database with deduplication
+            if (categoriesData.Categories && categoriesData.Categories.length > 0) {
+                await this.digiKeyService.storeCategories(categoriesData.Categories);
+            }
+
+            loggerInfo(`Successfully retrieved and stored ${categoriesData.Categories?.length || 0} categories`);
+
+            return res.status(200).json(categoriesData);
+
         } catch (error) {
+            loggerError(`Error fetching categories: ${error.message}`);
+
             return res.status(500).json({
                 success: false,
                 error: 'Internal server error',
                 message: 'An error occurred while fetching categories',
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    /**
+     * Get manufacturers list from DigiKey API
+     * GET /api/products/v4/search/manufacturers
+     * @param {Object} req - Express request object
+     * @param {Object} res - Express response object
+     */
+    async getManufacturers(req, res) {
+        try {
+            loggerInfo('Manufacturers list request received');
+
+            const manufacturersData = await this.digiKeyService.getManufacturers();
+
+            // Store manufacturers in database with deduplication
+            if (manufacturersData.Manufacturers && manufacturersData.Manufacturers.length > 0) {
+                await this.digiKeyService.storeManufacturers(manufacturersData.Manufacturers);
+            }
+
+            loggerInfo(`Successfully retrieved and stored ${manufacturersData.Manufacturers?.length || 0} manufacturers`);
+
+            return res.status(200).json(manufacturersData);
+
+        } catch (error) {
+            loggerError(`Error fetching manufacturers: ${error.message}`);
+
+            return res.status(500).json({
+                success: false,
+                error: 'Internal server error',
+                message: 'An error occurred while fetching manufacturers',
                 timestamp: new Date().toISOString()
             });
         }

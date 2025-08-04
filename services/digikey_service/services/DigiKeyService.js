@@ -209,9 +209,42 @@ class DigiKeyService {
 
                 // Enrich products with categoryHierarchy and subCategory from categories map
                 const enrichedProducts = products.map(product => {
-                    const categoryHierarchy = this.getCategoryHierarchy(product.categoryId, categoryMap);
+                    let categoryHierarchy = [];
+                    let subCategory = [];
+
+                    // Try to get hierarchy from categoryId
+                    if (product.categoryId) {
+                        categoryHierarchy = this.getCategoryHierarchy(product.categoryId, categoryMap);
+                    }
+
+                    // If no hierarchy found, try to build from Classifications
+                    if (categoryHierarchy.length === 0 && product.classifications) {
+                        const classifications = product.classifications;
+                        const hierarchy = [];
+
+                        if (classifications.Category) {
+                            hierarchy.push(classifications.Category.Name);
+                        }
+                        if (classifications.Family) {
+                            hierarchy.push(classifications.Family.Name);
+                        }
+                        if (classifications.SubFamily) {
+                            hierarchy.push(classifications.SubFamily.Name);
+                        }
+
+                        categoryHierarchy = hierarchy.filter(Boolean);
+                    }
+
+                    // If still no hierarchy, use mainCategory
+                    if (categoryHierarchy.length === 0 && product.mainCategory) {
+                        categoryHierarchy = [product.mainCategory];
+                    }
+
+                    // Set subCategory as all categories except the first one
+                    subCategory = categoryHierarchy.length > 1 ? categoryHierarchy.slice(1) : [];
+
                     product.categoryHierarchy = categoryHierarchy;
-                    product.subCategory = categoryHierarchy.length > 1 ? categoryHierarchy.slice(1) : [];
+                    product.subCategory = subCategory;
                     return product;
                 });
 
@@ -266,15 +299,6 @@ class DigiKeyService {
                         quantityAvailable: product.QuantityAvailable || 0,
                         mainCategory: (product.Classifications && product.Classifications.Category && product.Classifications.Category.Name) || (product.Category && product.Category.Name) || 'Uncategorized',
                         categoryId: (product.Classifications && product.Classifications.Category && product.Classifications.Category.CategoryId) || (product.Category && product.Category.CategoryId) || null,
-                        subCategory: [
-                            (product.Classifications && product.Classifications.Family && product.Classifications.Family.Name) || null,
-                            (product.Classifications && product.Classifications.SubFamily && product.Classifications.SubFamily.Name) || null
-                        ].filter(Boolean),
-                        categoryHierarchy: [
-                            (product.Classifications && product.Classifications.Category && product.Classifications.Category.Name) || null,
-                            (product.Classifications && product.Classifications.Family && product.Classifications.Family.Name) || null,
-                            (product.Classifications && product.Classifications.SubFamily && product.Classifications.SubFamily.Name) || null
-                        ].filter(Boolean),
                         productUrl: product.ProductUrl || '',
                         datasheetUrl: product.DatasheetUrl || '',
                         photoUrl: product.PhotoUrl || '',
@@ -602,6 +626,118 @@ class DigiKeyService {
             if (error.response) {
                 loggerError(`Categories request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
             }
+            throw error;
+        }
+    }
+
+    /**
+     * Get manufacturers list from DigiKey API
+     * @returns {Promise<Object>} Manufacturers response object
+     */
+    async getManufacturers() {
+        try {
+            const token = await this.getAccessToken();
+            const url = `${this.baseURL}/search/manufacturers`;
+
+            loggerInfo(`Fetching manufacturers from: ${url}`);
+            loggerInfo(`Request headers: Authorization: Bearer ${token.substring(0, 10)}..., X-DIGIKEY-Client-Id: ${this.clientId.substring(0, 5)}...`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-DIGIKEY-Client-Id': this.clientId,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 15000
+            });
+
+            loggerInfo(`Manufacturers request successful. Response status: ${response.status}`);
+
+            if (response.status === 200 && response.data) {
+                loggerInfo('Fetched manufacturers data from DigiKey API');
+                return response.data;
+            } else {
+                loggerWarn('Failed to fetch manufacturers data from DigiKey API');
+                return { Manufacturers: [] };
+            }
+        } catch (error) {
+            loggerError(`Error fetching manufacturers: ${error.message}`);
+            if (error.response) {
+                loggerError(`Manufacturers request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+            }
+            return { Manufacturers: [] };
+        }
+    }
+    /**
+     * Store categories in MongoDB with deduplication
+     * @param {Array} categories - Array of category objects
+     * @returns {Promise<Object>} Result of insert operation
+     */
+    async storeCategories(categories) {
+        if (!categories || categories.length === 0) {
+            loggerWarn('No categories to store');
+            return { insertedCount: 0, skippedCount: 0 };
+        }
+        try {
+            const collection = getCollection('categories');
+            let insertedCount = 0;
+            let skippedCount = 0;
+
+            for (const category of categories) {
+                // Use CategoryId as unique identifier
+                const existing = await collection.findOne({ CategoryId: category.CategoryId });
+                if (existing) {
+                    skippedCount++;
+                    continue;
+                }
+                await collection.insertOne({
+                    ...category,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                insertedCount++;
+            }
+            loggerSuccess(`Stored categories - Inserted: ${insertedCount}, Skipped: ${skippedCount}`);
+            return { insertedCount, skippedCount };
+        } catch (error) {
+            loggerError(`Error storing categories: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Store manufacturers in MongoDB with deduplication
+     * @param {Array} manufacturers - Array of manufacturer objects
+     * @returns {Promise<Object>} Result of insert operation
+     */
+    async storeManufacturers(manufacturers) {
+        if (!manufacturers || manufacturers.length === 0) {
+            loggerWarn('No manufacturers to store');
+            return { insertedCount: 0, skippedCount: 0 };
+        }
+        try {
+            const collection = getCollection('manufacturers');
+            let insertedCount = 0;
+            let skippedCount = 0;
+
+            for (const manufacturer of manufacturers) {
+                // Use Id as unique identifier
+                const existing = await collection.findOne({ Id: manufacturer.Id });
+                if (existing) {
+                    skippedCount++;
+                    continue;
+                }
+                await collection.insertOne({
+                    ...manufacturer,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                insertedCount++;
+            }
+            loggerSuccess(`Stored manufacturers - Inserted: ${insertedCount}, Skipped: ${skippedCount}`);
+            return { insertedCount, skippedCount };
+        } catch (error) {
+            loggerError(`Error storing manufacturers: ${error.message}`);
             throw error;
         }
     }
