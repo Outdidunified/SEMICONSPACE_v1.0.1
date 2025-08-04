@@ -19,7 +19,7 @@ app.use(cors({
 
 // Middleware to skip JSON parsing for GET requests with bodies
 app.use((req, res, next) => {
-    if (req.method === 'GET' && req.get('Content-Length') && req.get('Content-Length') !== '0') {
+    if (req.method === 'GET' && req.get('Content-Length')) {
         loggerWarn(`GET request with body detected: ${req.method} ${req.originalUrl}, Content-Length: ${req.get('Content-Length')}`);
         return res.status(400).json({
             success: false,
