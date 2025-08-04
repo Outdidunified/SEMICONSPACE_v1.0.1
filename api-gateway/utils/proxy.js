@@ -3,7 +3,7 @@ const { loggerDebug, loggerError, loggerSuccess, loggerWarn, loggerInfo } = requ
 
 function createServiceProxy(target, match, authHeader) {
     return proxy(target, {
-        timeout: 120000, // Fixed: Use direct number instead of function - 2 minutes for large data
+        timeout: 180000, // Fixed: Use direct number instead of function - 2 minutes for large data
         limit: '50mb', // Increase body size limit
         proxyReqPathResolver: (req) => req.originalUrl.replace(/^\/api/, ''),
         proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
