@@ -210,7 +210,6 @@ class DigiKeyService {
                 // Enrich products with categoryHierarchy and subCategory from categories map
                 const enrichedProducts = products.map(product => {
                     let categoryHierarchy = [];
-                    let subCategory = [];
 
                     // Try to get hierarchy from categoryId
                     if (product.categoryId) {
@@ -240,11 +239,7 @@ class DigiKeyService {
                         categoryHierarchy = [product.mainCategory];
                     }
 
-                    // Set subCategory as all categories except the first one
-                    subCategory = categoryHierarchy.length > 1 ? categoryHierarchy.slice(1) : [];
-
                     product.categoryHierarchy = categoryHierarchy;
-                    product.subCategory = subCategory;
                     return product;
                 });
 
