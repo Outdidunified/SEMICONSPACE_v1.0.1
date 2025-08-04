@@ -18,19 +18,19 @@ app.use(cors({
 }));
 
 // Middleware to skip JSON parsing for GET requests with bodies
-app.use((req, res, next) => {
-    if (req.method === 'GET' && req.get('Content-Length')) {
-        loggerWarn(`GET request with body detected: ${req.method} ${req.originalUrl}, Content-Length: ${req.get('Content-Length')}`);
-        return res.status(400).json({
-            success: false,
-            error: 'Invalid request',
-            message: 'GET requests should not include a request body.',
-            details: 'GET requests are for retrieving data and should not contain request bodies. Use query parameters instead.',
-            timestamp: new Date().toISOString()
-        });
-    }
-    next();
-});
+// app.use((req, res, next) => {
+//     if (req.method === 'GET' && req.get('Content-Length')) {
+//         loggerWarn(`GET request with body detected: ${req.method} ${req.originalUrl}, Content-Length: ${req.get('Content-Length')}`);
+//         return res.status(400).json({
+//             success: false,
+//             error: 'Invalid request',
+//             message: 'GET requests should not include a request body.',
+//             details: 'GET requests are for retrieving data and should not contain request bodies. Use query parameters instead.',
+//             timestamp: new Date().toISOString()
+//         });
+//     }
+//     next();
+// });
 
 // JSON parsing middleware with error handling
 app.use(express.json({
