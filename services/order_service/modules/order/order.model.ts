@@ -1,5 +1,3 @@
-
-// src/modules/order/order.model.ts
 // services/order_service/modules/order/order.model.ts
 import { Column, DataType, Model, Table } from 'sequelize-typescript';
 
@@ -28,15 +26,28 @@ export class Order extends Model {
     state: string;
   };
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column(DataType.STRING)
   razorpayOrderId!: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column(DataType.STRING)
   razorpayPaymentId!: string;
 
-  @Column({ type: DataType.DATE })
+  // ✅ Add field mappings here
+  @Column({ type: DataType.DATE, field: 'confirmedat' }) // or 'confirmed_at' if that's what your DB uses
+  confirmedAt!: Date;
+
+  @Column({ type: DataType.DATE, field: 'shippedat' })
+  shippedAt!: Date;
+
+  @Column({ type: DataType.DATE, field: 'outfordeliveryat' })
+  outForDeliveryAt!: Date;
+
+  @Column({ type: DataType.DATE, field: 'deliveredat' })
+  deliveredAt!: Date;
+
+  @Column({ type: DataType.DATE, field: 'createdat' })
   createdAt!: Date;
 
-  @Column({ type: DataType.DATE })
+  @Column({ type: DataType.DATE, field: 'updatedat' })
   updatedAt!: Date;
 }

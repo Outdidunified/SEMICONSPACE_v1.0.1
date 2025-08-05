@@ -8,6 +8,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { ManagerOrder } from './managerorder.model';
 import { UpdateManagerOrderDto } from './dto/update-managerorder.dto';
 import axios from 'axios';
+// This service handles order management operations, including fetching and updating orders.
 
 @Injectable()
 export class ManagerOrderService {
@@ -112,53 +113,50 @@ export class ManagerOrderService {
     };
   }
 
-  async update(orderId: string, dto: UpdateManagerOrderDto): Promise<any> {
-    this.validateUUID(orderId, 'Order ID');
+ async update(orderId: string, dto: UpdateManagerOrderDto): Promise<any> {
+  this.validateUUID(orderId, 'Order ID');
 
-    const existingOrder = await this.orderModel.findByPk(orderId);
-
-    if (!existingOrder) {
-      throw new HttpException(
-        {
-          statusCode: 404,
-          error: true,
-          message: 'Order not found',
-        },
-        404,
-      );
-    }
-
-    if (dto.status && dto.status === existingOrder.status) {
-      return {
-        statusCode: 409,
-        error: true,
-        message: `Order status is already '${dto.status}'`,
-      };
-    }
-
-    const [count, updated] = await this.orderModel.update(dto, {
-      where: { orderId },
-      returning: true,
-    });
-
-    if (count === 0) {
-      throw new HttpException(
-        {
-          statusCode: 404,
-          error: true,
-          message: 'Order not found or no changes made',
-        },
-        404,
-      );
-    }
-
-    return {
-      statusCode: 200,
-      error: false,
-      message: 'Order updated successfully',
-      data: updated[0],
-    };
+  const existingOrder = await this.orderModel.findByPk(orderId);
+  if (!existingOrder) {
+    throw new HttpException({ statusCode: 404, error: true, message: 'Order not found' }, 404);
   }
+
+  const now = new Date();
+
+  // ✅ Automatically track time when status is updated
+  switch (dto.status) {
+    case 'shipped':
+      existingOrder.shippedAt = now;
+      break;
+    case 'out for delivery':
+    case 'out-for-delivery':
+      existingOrder.outForDeliveryAt = now;
+      break;
+    case 'delivered':
+      existingOrder.deliveredAt = now;
+      break;
+  }
+
+  if (dto.status) existingOrder.status = dto.status;
+  if (dto.totalAmount) existingOrder.total = dto.totalAmount;
+  if (dto.deliveryAddress) {
+    try {
+      existingOrder.deliveryAddress = JSON.parse(dto.deliveryAddress);
+    } catch {
+      throw new HttpException({ statusCode: 400, error: true, message: 'Invalid address format' }, 400);
+    }
+  }
+
+  await existingOrder.save();
+
+  return {
+    statusCode: 200,
+    error: false,
+    message: 'Order updated successfully',
+    data: existingOrder,
+  };
+}
+
 
   async findByUserId(userId: string): Promise<any> {
     try {
