@@ -15,67 +15,55 @@ export class AddressService {
     return Address.findAll({ where: { userId } });
   }
 
-  async createAddress(dto: CreateAddressDto) {
-    const { userId, isDefault } = dto;
+ async createAddress(dto: CreateAddressDto) {
+  const { userId, isDefault } = dto;
 
-    try {
-      // Unset other default addresses for the user if needed
-      if (isDefault) {
-        await Address.update({ isDefault: false }, { where: { userId, isDefault: true } });
-      }
-
-      // Check if address exists
-      const existing = await Address.findOne({ where: { userId } });
-
-      let address;
-      if (existing) {
-        await existing.update({
-          ...dto,
-          modified_by: dto.modified_by || dto.userId,
-        });
-        address = existing;
-        this.logger.log(`Updated existing address for user: ${userId}`);
-      } else {
-        address = await Address.create({
-          ...dto,
-          modified_by: dto.modified_by || dto.userId,
-        });
-        this.logger.log(`Created new address for user: ${userId}`);
-      }
-
-      await this.producer.produceEvent('user.address.added', address);
-      return address;
-    } catch (error) {
-      this.logger.error(`Error saving address for user: ${userId}`, error.stack);
-      throw new Error('Failed to create or update address');
+  try {
+    if (isDefault) {
+      await Address.update({ isDefault: false }, { where: { userId } });
     }
+
+    const address = await Address.create({
+      ...dto,
+      modified_by: dto.modified_by || dto.userId,
+    });
+
+    this.logger.log(`Created new address for user: ${userId}`);
+    await this.producer.produceEvent('user.address.added', address);
+
+    return address;
+  } catch (error) {
+    this.logger.error(`Error creating address for user: ${userId}`, error.stack);
+    throw new Error('Failed to create address');
   }
+}
 
 
   // src/modules/address/address.service.ts
 
 async updateAddress(dto: CreateAddressDto) {
-  const { userId, isDefault } = dto;
+  const { addressId, userId, isDefault } = dto;
+
+  if (!addressId) throw new Error('Address ID is required for update');
 
   try {
-    const existing = await Address.findOne({ where: { userId } });
+    const existing = await Address.findOne({ where: { addressId, userId } });
 
     if (!existing) {
-      this.logger.warn(`No address found for user: ${userId}`);
+      this.logger.warn(`No address found for addressId: ${addressId}`);
       throw new Error('No address found to update');
     }
 
-    // If this address should become default, unset others
     if (isDefault) {
-      await Address.update({ isDefault: false }, { where: { userId, isDefault: true } });
+      await Address.update({ isDefault: false }, { where: { userId } });
     }
 
     await existing.update({
       ...dto,
-      modified_by: dto.modified_by || dto.userId,
+      modified_by: dto.modified_by || userId,
     });
 
-    this.logger.log(`Updated address for user: ${userId}`);
+    this.logger.log(`Updated address for user: ${userId}, addressId: ${addressId}`);
     await this.producer.produceEvent('user.address.updated', existing);
 
     return existing;
@@ -84,5 +72,6 @@ async updateAddress(dto: CreateAddressDto) {
     throw new Error('Failed to update address');
   }
 }
+
 
 }

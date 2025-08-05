@@ -24,26 +24,27 @@ export class OrderController {
   /**
    * Route: POST /order/createorder
    */
-  @Post('createorder')
-  @HttpCode(HttpStatus.OK)
-  @UsePipes(new ValidationPipe({ transform: true }))
-  async placeOrder(@Body('userId') userId: string) {
-    if (!userId) {
-      throw new HttpException({ error: true, message: 'User ID is required' }, HttpStatus.BAD_REQUEST);
-    }
-
-    this.logger.log(`Placing order for userId: ${userId}`);
-    try {
-      const order = await this.orderService.createOrderFromCart(userId);
-      return { error: false, order };
-    } catch (error) {
-      this.logger.error('Order placement failed:', error.message);
-      throw new HttpException(
-        { error: true, message: error.message || 'Order placement failed' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+ // POST /order/createorder
+@Post('createorder')
+@HttpCode(HttpStatus.OK)
+@UsePipes(new ValidationPipe({ transform: true }))
+async placeOrder(@Body('userId') userId: string, @Body('addressId') addressId?: string) {
+  if (!userId) {
+    throw new HttpException({ error: true, message: 'User ID is required' }, HttpStatus.BAD_REQUEST);
   }
+
+  this.logger.log(`Placing order for userId: ${userId}, using addressId: ${addressId}`);
+  try {
+    const order = await this.orderService.createOrderFromCart(userId, addressId);
+    return { error: false, order };
+  } catch (error) {
+    this.logger.error('Order placement failed:', error.message);
+    throw new HttpException(
+      { error: true, message: error.message || 'Order placement failed' },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
 
 
   @Post('user-orders')
