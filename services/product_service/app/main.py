@@ -17,7 +17,7 @@ from app.database import client
 from app.routes.categories_route import router as categories_router
 # from app.routes.pricing_route import router as pricing_router
 # from app.routes.specification_route import router as specification_route
-from app.routes.manfature_route import router as manufacturer_route
+from app.routes.manufacturer_route import router as manufacturer_route
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

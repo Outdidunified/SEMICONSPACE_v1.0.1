@@ -12,3 +12,7 @@ class SemiconManufacturer(Model):
     modified_date: datetime
     status: bool
 
+    model_config = {
+        "collection": "semicon_manufacturer"
+    }
+
