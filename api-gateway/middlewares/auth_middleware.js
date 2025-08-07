@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { loggerInfo, loggerError } = require('../utils/logger');
+const { loggerInfo, loggerError, loggerWarn } = require('../utils/logger');
+const { sessionManager } = require('../utils/session_manager');
 
 function verifyJwt(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -33,18 +34,42 @@ function verifyJwt(req, res, next) {
       algorithms: [process.env.JWT_ALGORITHM || 'HS256'], // ⬅️ Enforce correct algo
     });
 
+    // Check if token has expired (additional check)
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < currentTime) {
+      loggerError('Authentication failed: Token has expired');
+      return res.status(401).json({ error: 'Token has expired' });
+    }
+
+    // Validate session if sessionId is present
+    if (payload.sessionId && payload.userId) {
+      if (!sessionManager.isValidSession(payload.sessionId, payload.userId)) {
+        loggerWarn(`Invalid session detected for user: ${payload.userId}, sessionId: ${payload.sessionId}`);
+        return res.status(401).json({ error: 'Session invalid or expired', code: 'INVALID_SESSION' });
+      }
+    }
+
     req.user = payload;
 
     // Add user info to headers for downstream services
     if (payload.userId) req.headers['x-user-id'] = payload.userId;
     if (payload.email) req.headers['x-user-email'] = payload.email;
     if (payload.role) req.headers['x-user-role'] = payload.role;
+    if (payload.sessionId) req.headers['x-session-id'] = payload.sessionId;
 
-    loggerInfo(`Authentication successful for user: ${payload.email || payload.userId || 'unknown'}`);
+    loggerInfo(`Authentication successful for user: ${payload.email || payload.userId || 'unknown'} (Session: ${payload.sessionId || 'N/A'})`);
     next();
   } catch (err) {
-    loggerError(`Authentication failed: ${err.message}`);
-    return res.status(403).json({ error: 'Invalid or expired token' });
+    if (err.name === 'TokenExpiredError') {
+      loggerError('Authentication failed: Token has expired');
+      return res.status(401).json({ error: 'Token has expired', code: 'TOKEN_EXPIRED' });
+    } else if (err.name === 'JsonWebTokenError') {
+      loggerError(`Authentication failed: Invalid token - ${err.message}`);
+      return res.status(401).json({ error: 'Invalid token', code: 'INVALID_TOKEN' });
+    } else {
+      loggerError(`Authentication failed: ${err.message}`);
+      return res.status(403).json({ error: 'Authentication failed', code: 'AUTH_ERROR' });
+    }
   }
 }
 
