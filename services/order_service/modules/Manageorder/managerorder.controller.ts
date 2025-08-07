@@ -25,4 +25,10 @@ export class ManagerOrderController {
   getOrdersByUserId(@Body('userId') userId: string) {
     return this.orderService.findByUserId(userId);
   }
+
+  @Get('analytics') // GET /order/admin/analytics
+getOrderAnalytics() {
+  return this.orderService.getAnalytics();
+}
+
 }

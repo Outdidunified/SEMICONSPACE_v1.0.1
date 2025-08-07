@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Op, fn, col, literal, Sequelize } from 'sequelize'; // Top of the file
 import { ManagerOrder } from './managerorder.model';
 import { UpdateManagerOrderDto } from './dto/update-managerorder.dto';
 import axios from 'axios';
@@ -206,4 +207,155 @@ export class ManagerOrderService {
       };
     }
   }
+
+  async getAnalytics() {
+  try {
+    // 1. Total Orders Count
+    const totalOrders = await this.orderModel.count();
+
+    // 2. Orders Count by Status
+    const ordersByStatus = await this.orderModel.findAll({
+      attributes: [
+        'status',
+        [fn('COUNT', col('status')), 'count']
+      ],
+      group: ['status'],
+    });
+
+    // 3. Monthly Orders (Last 6 Months)
+    const monthlyOrders = await this.orderModel.findAll({
+      attributes: [
+        [fn('DATE_TRUNC', 'month', col('createdat')), 'month'],
+        [fn('COUNT', '*'), 'count'],
+      ],
+      group: [literal('DATE_TRUNC(\'month\', "createdat")') as any],
+      order: [[literal('DATE_TRUNC(\'month\', "createdat")'), 'DESC']],
+      limit: 6,
+    });
+
+    // 4. Total Revenue Generated (only from delivered orders)
+    const totalRevenue = await this.orderModel.sum('total', {
+      where: {
+        status: 'delivered',
+      },
+    });
+
+    // 5. Average Order Value (AOV)
+    const totalDeliveredOrders = await this.orderModel.count({
+      where: { status: 'delivered' }
+    });
+
+    // 6. Orders Today / This Week / This Month
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const ordersToday = await this.orderModel.count({
+      where: {
+        createdAt: {
+          [Op.gte]: today,
+        },
+      },
+    });
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const ordersThisWeek = await this.orderModel.count({
+      where: {
+        createdAt: {
+          [Op.gte]: weekAgo,
+        },
+      },
+    });
+
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    const ordersThisMonth = await this.orderModel.count({
+      where: {
+        createdAt: {
+          [Op.gte]: firstDayOfMonth,
+        },
+      },
+    });
+
+    // 7. Average Delivery Time
+    const deliveryDurations = await this.orderModel.findAll({
+      where: {
+        deliveredAt: { [Op.ne]: null },
+        confirmedAt: { [Op.ne]: null },
+      },
+      attributes: [
+        [literal('EXTRACT(EPOCH FROM (deliveredat - confirmedat))'), 'duration_seconds'],
+      ],
+    });
+
+ 
+
+    // Daily Revenue (existing)
+    const daily = await this.orderModel.findAll({
+      attributes: [
+        [fn('DATE', col('createdat')), 'date'],
+        [fn('SUM', col('total')), 'totalRevenue'],
+        [fn('COUNT', col('orderId')), 'totalOrders'],
+      ],
+      group: [literal(`DATE("createdat")`) as any],
+      order: [[literal('DATE("createdat")'), 'ASC']],
+    });
+
+    // Weekly Revenue (existing)
+    const weekly = await this.orderModel.findAll({
+      attributes: [
+        [fn('DATE_TRUNC', 'week', col('createdat')), 'week'],
+        [fn('SUM', col('total')), 'totalRevenue'],
+        [fn('COUNT', col('orderId')), 'totalOrders'],
+      ],
+      group: [literal('DATE_TRUNC(\'week\', "createdat")') as any],
+      order: [[literal('DATE_TRUNC(\'week\', "createdat")'), 'ASC']],
+    });
+
+    // Monthly Revenue (existing)
+    const monthly = await this.orderModel.findAll({
+      attributes: [
+        [fn('DATE_TRUNC', 'month', col('createdat')), 'month'],
+        [fn('SUM', col('total')), 'totalRevenue'],
+        [fn('COUNT', col('orderId')), 'totalOrders'],
+      ],
+      group: [literal('DATE_TRUNC(\'month\', "createdat")') as any],
+      order: [[literal('DATE_TRUNC(\'month\', "createdat")'), 'ASC']],
+    });
+
+    return {
+      statusCode: 200,
+      error: false,
+      message: 'Order analytics fetched successfully',
+      data: {
+        // Summary Statistics
+        totalOrders,
+        totalRevenue: totalRevenue || 0,
+        
+        
+        // Time-based Counts
+        ordersToday,
+        ordersThisWeek,
+        ordersThisMonth,
+        
+        // Status Distribution
+        ordersByStatus,
+        
+        // Time Series Data
+        monthlyOrders,
+        daily,
+        weekly,
+        monthly,
+      },
+    };
+  } catch (error) {
+    this.logger.error('Error in getAnalytics:', error);
+    return {
+      statusCode: 500,
+      error: true,
+      message: 'Failed to fetch analytics',
+    };
+  }
+}
 }
