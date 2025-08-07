@@ -1,21 +1,21 @@
-from odmantic import Model, Field
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
-
-
+from odmantic import Model, EmbeddedModel, Field
+from typing import List, Optional
+from datetime import datetime
+from uuid import uuid4, UUID
 class ProductSpecification(Model):
-    id: UUID = Field(primary_field=True, default_factory=uuid4)
-    spec_id: int
-    product_id: int
-    parameter_name: str
-    parameter_value: str
-    created_by: str
-    created_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    modified_by: str
-    modified_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    status: bool
-    model_config = {"collection": "product_specifications"}
+    id: UUID = Field(default_factory=uuid4, primary_field=True)
+    #semicon_product_id: str
+    parameter_id: str = Field(unique=True)
+    parameter_text: Optional[str] = Field(key_name="parameterText")
+    parameter_type: Optional[str] = Field(key_name="parameterType")
+    value_id: Optional[str] = None
+    value_text: Optional[str] = None
+    status: Optional[bool] = True
+    created_by: Optional[str] = None
+    created_date: datetime = Field(default_factory=datetime.utcnow)
+    modified_by: Optional[str] = None
+    modified_date: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = {
+        "collection": "product_specifications"
+    }

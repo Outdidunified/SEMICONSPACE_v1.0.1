@@ -1,22 +1,28 @@
-from odmantic import Model, Field
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from odmantic import Model, EmbeddedModel, Field
+from typing import List, Optional
+from datetime import datetime
+from uuid import uuid4, UUID
 
+class PricingTier(EmbeddedModel):
+    break_quantity: int = Field(key_name="BreakQuantity")
+    unit_price: float = Field(key_name="UnitPrice")
+    total_price: float = Field(key_name="TotalPrice")
 
-class ProductPricing(Model):
-    id: UUID = Field(primary_field=True, default_factory=uuid4)
-    product_pricing_id: int  # Auto-increment field
-    product_id: int
-    currency: str
-    price: float
-    min_quantity: int
-    available_quantity: int
-    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    created_by: str
-    created_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    modified_by: str
-    modified_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    status: bool
+class VendorBulkPricing(Model):
+    id: UUID = Field(default_factory=uuid4, primary_field=True)
+    vendor_product_id: str 
+    pricing_record_id: str = Field(unique=True)
 
-    # ✅ ODMantic way to define collection name
-    model_config = {"collection": "product_pricings"}
+    # ✅ Map to capitalized DB fields
+    standard_pricing: List[PricingTier] = Field(default_factory=list, key_name="StandardPricing")
+    my_pricing: List[PricingTier] = Field(default_factory=list, key_name="MyPricing")
+
+    status: Optional[bool] = True
+    created_by: Optional[str] = None
+    created_date: datetime = Field(default_factory=datetime.utcnow)
+    modified_by: Optional[str] = None
+    modified_date: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = {
+        "collection": "vendor_bulk_pricing"
+    }

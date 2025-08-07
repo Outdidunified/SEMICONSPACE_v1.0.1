@@ -1,183 +1,160 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional, Union
-from datetime import datetime, timezone
-import logging
-
-from app.models.categories_models import Category
-from app.schemas.categories_schema import (
-    CategorySchema, CategoryResponseSchema,
-    CategoryUpdateRequest, CategoryStatusToggleRequest
-)
+from fastapi import APIRouter, HTTPException
+from app.services.sync_semicon_categories import fetch_and_sync_semicon_categories
+from app.schemas.categories_schema import SemiconCategoryCreateSchema, SemiconChildCategorySchema, SemiconCategoryUpdateSchema
+from app.models.categories_models import SemiconCategory, SemiconChildCategory
 from app.database import engine
-from app.auth_utils import get_current_user
-from app.kafka.kafka_producer import send_event
+from typing import List, Optional
+from datetime import datetime
 
-router = APIRouter(tags=["Categories"], prefix="/product/category")
-logger = logging.getLogger("category_logger")
+router = APIRouter(prefix="/product")
 
-def success_response(data: Union[dict, list], message: Optional[str] = None):
-    response = {
-        "error" : "false",
-        "data": data
-    }
-    if message:
-        response["message"] = message
-    return response
-@router.get("/get/list")
-async def get_all_categories():
-    categories = await engine.find(Category)
-    logger.info("Fetched all active categories")
-    return success_response([category.model_dump() for category in categories])
+# 🚀 Sync categories
+@router.get("/sync/categories", tags=["Sync"])
+async def sync_semicon_categories():
+    result = await fetch_and_sync_semicon_categories()
+    if result["status"] == "success":
+        return {
+            "status": "success",
+            "message": f"Synced {result.get('saved_count', 0)} categories."
+        }
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "failure",
+                "message": "Failed to sync categories.",
+                "error": result.get("detail")
+            }
+        )
+
+# 📦 Get all categories
+@router.get("/all/categories", response_model=List[SemiconCategoryCreateSchema])
+async def get_all_semicon_categories():
+    categories = await engine.find(SemiconCategory)
+    return categories
+# 🔢 Get next category ID
+async def get_next_semicon_category_counter():
+    docs = await engine.find(SemiconCategory)
+    max_id = 0
+    for doc in docs:
+        try:
+            current = int(doc.semicon_category_id.split("-")[1])
+            max_id = max(max_id, current)
+        except:
+            continue
+    return max_id + 1
 
 
-@router.get("/get/{category_id}")
-async def get_category_by_id(category_id: int):
-    category = await engine.find_one(Category, (Category.category_id == category_id))
-    if not category:
-        logger.warning(f"Category with ID {category_id} not found or inactive")
-        raise HTTPException(status_code=404, detail="Category not found")
-    logger.info(f"Fetched category with ID: {category_id}")
-    return success_response(category.model_dump())
+# 🔁 Recursive child saving
+async def save_child_recursive(child: SemiconChildCategorySchema, parent_id: str, prefix: str, index: int) -> SemiconChildCategory:
+    child_id = child.semicon_child_category_id or f"{prefix}-{index}"
+    created = SemiconChildCategory(
+        semicon_child_category_id=child_id,
+        semicon_child_parent_id=parent_id,
+        digikey_child_category_id=child.digikey_child_category_id,
+        digikey_child_name=child.digikey_child_name,
+        digikey_parent_id=child.digikey_parent_id,
+        product_count=child.product_count or 0,
+        created_by=child.created_by or "system",
+        modified_by=child.modified_by or "system",
+        created_date=child.created_date or datetime.utcnow(),
+        modified_date=child.modified_date or datetime.utcnow(),
+        status=child.status if child.status is not None else True,
+        child_categories=[]  # will fill after recursive call
+    ) # type: ignore
 
-@router.post("/add")
-async def create_category(
-    category: CategorySchema, current_user: str = Depends(get_current_user)
-):
-    existing = await engine.find_one(Category, Category.category_id == category.category_id)
-    if existing:
-        logger.warning(f"Category with ID {category.category_id} already exists")
-        raise HTTPException(status_code=400, detail="Category with this ID already exists")
+    # Save this node first
+    await engine.save(created)
 
-    now = datetime.now(timezone.utc)
-    new_cat = Category(
-        **category.model_dump(),
-        created_by=current_user,
-        modified_by=current_user,
-        created_date=now,
-        modified_date=now,
-        #status=True
+    # Recursively save children
+    for i, grandchild in enumerate(child.child_categories or []):
+        saved_grandchild = await save_child_recursive(grandchild, child_id, f"{child_id}-C", i + 1)
+        created.child_categories.append(saved_grandchild)
+
+    # Save updated node with child_categories
+    await engine.save(created)
+    return created
+
+
+# ➕ Add categories with nested children
+@router.post("/add/categories", response_model=List[SemiconCategoryCreateSchema])
+async def add_semicon_categories(categories: List[SemiconCategoryCreateSchema]):
+    added = []
+    counter = await get_next_semicon_category_counter()
+
+    for cat in categories:
+        semicon_id = cat.semicon_category_id or f"SCID-{counter}"
+        counter += 1
+
+        new_cat = SemiconCategory(
+            semicon_category_id=semicon_id,
+            semicon_parent_id=cat.semicon_parent_id,
+            digikey_category_id=cat.digikey_category_id,
+            digikey_name=cat.digikey_name,
+            digikey_parent_id=cat.digikey_parent_id,
+            product_count=cat.product_count or 0,
+            created_by=cat.created_by or "system",
+            modified_by=cat.modified_by or "system",
+            created_date=cat.created_date or datetime.utcnow(),
+            modified_date=cat.modified_date or datetime.utcnow(),
+            status=cat.status if cat.status is not None else True,
+            child_categories=[]
+        ) # type: ignore
+
+        # Save parent category
+        await engine.save(new_cat)
+
+        # Save each top-level child recursively
+        for idx, child in enumerate(cat.child_categories or []):
+            saved_child = await save_child_recursive(child, new_cat.semicon_category_id, f"SCCID-{cat.digikey_category_id}", idx + 1)
+            new_cat.child_categories.append(saved_child)
+
+        # Save updated parent with children
+        await engine.save(new_cat)
+        added.append(new_cat)
+
+    return added
+
+@router.put("/category/update")
+async def update_semicon_category(payload: SemiconCategoryUpdateSchema):
+    existing_category = await engine.find_one(
+        SemiconCategory, SemiconCategory.semicon_category_id == payload.semicon_category_id
     )
-    await engine.save(new_cat)
-    logger.info(f"New category created: {new_cat.category_name} by {current_user}")
 
-    try:
-        await send_event("category.created", {
-            "category_id": new_cat.category_id,
-            "category_name": new_cat.category_name,
-            "created_by": current_user,
-            "created_date": new_cat.created_date.isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Kafka error while sending category.created: {e}")
+    if not existing_category:
+        raise HTTPException(
+            status_code=404,
+            detail={"status": "failure", "message": "SemiconCategory not found"}
+        )
 
-    return success_response(new_cat.model_dump(), message="Category created successfully")
+    # Update top-level fields
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field != "child_categories":
+            setattr(existing_category, field, value)
 
+    # Optional: update child_categories
+    if payload.child_categories:
+        updated_children = []
+        for child in payload.child_categories:
+            existing_child = next(
+                (c for c in existing_category.child_categories if c.semicon_child_category_id == child.semicon_child_category_id),
+                None
+            )
+            if existing_child:
+                for key, val in child.model_dump(exclude_unset=True).items():
+                    setattr(existing_child, key, val)
+                existing_child.modified_date = datetime.utcnow()
+                updated_children.append(existing_child)
+            else:
+                new_child = SemiconChildCategory(
+                    **child.model_dump(),
+                    created_date=datetime.utcnow(),
+                    modified_date=datetime.utcnow()
+                )
+                updated_children.append(new_child)
+        existing_category.child_categories = updated_children
+    
+    existing_category.modified_date = datetime.utcnow()
 
-@router.put("/update")
-async def update_category_by_body(
-    update_data: CategoryUpdateRequest,
-    current_user: str = Depends(get_current_user)
-):
-    category = await engine.find_one(Category, Category.category_id == update_data.category_id)
-    if not category:
-        logger.error(f"❌ Attempt to update non-existent category ID: {update_data.category_id}")
-        raise HTTPException(status_code=404, detail="Category not found")
-
-    # Extract only provided fields except category_id
-    update_fields = update_data.model_dump(exclude_unset=True, exclude={"category_id"})
-
-    # Only update status if it is explicitly provided
-    if "status" in update_fields:
-        category.status = update_fields.pop("status")
-
-    # Update remaining fields
-    for key, value in update_fields.items():
-        setattr(category, key, value)
-
-    category.modified_by = current_user
-    category.modified_date = datetime.now(timezone.utc)
-
-    await engine.save(category)
-
-    logger.info(f"✅ Category {category.category_id} updated by {current_user}")
-
-    try:
-        await send_event("category.updated", {
-            "category_id": category.category_id,
-            "category_name": category.category_name,
-            "modified_by": current_user,
-            "modified_date": category.modified_date.isoformat()
-        })
-    except Exception as e:
-        logger.error(f"⚠️ Kafka error while sending category.updated: {e}")
-
-    return success_response(category.model_dump(), message=f"Category {update_data.category_id} updated successfully")
-
-# @router.put("/update")
-# async def update_category_by_body(
-#     update_data: CategoryUpdateRequest,
-#     current_user: str = Depends(get_current_user)
-# ):
-#     category = await engine.find_one(Category, Category.category_id == update_data.category_id)
-#     if not category:
-#         logger.error(f"❌ Attempt to update non-existent category ID: {update_data.category_id}")
-#         raise HTTPException(status_code=404, detail="Category not found")
-
-#     for key, value in update_data.model_dump(exclude={"category_id"}).items():
-#         if value is not None:
-#             setattr(category, key, value)
-
-#     category.modified_by = current_user
-#     category.modified_date = datetime.now(timezone.utc)
-
-#     await engine.save(category)
-
-#     logger.info(f"✅ Category {category.category_id} updated by {current_user}")
-
-#     try:
-#         await send_event("category.updated", {
-#             "category_id": category.category_id,
-#             "category_name": category.category_name,
-#             "modified_by": current_user,
-#             "modified_date": category.modified_date.isoformat()
-#         })
-#     except Exception as e:
-#         logger.error(f"⚠️ Kafka error while sending category.updated: {e}")
-
-#     return success_response(category.model_dump(), message=f"Category {update_data.category_id} updated successfully")
-
-
-# @router.post("/status")
-# async def toggle_category_status_by_body(
-#     request: CategoryStatusToggleRequest,
-#     current_user: str = Depends(get_current_user)
-# ):
-#     category = await engine.find_one(Category, Category.category_id == request.category_id)
-#     if not category:
-#         logger.error(f"❌ Attempt to toggle status of non-existent category ID: {request.category_id}")
-#         raise HTTPException(status_code=404, detail="Category not found")
-
-#     previous_status = category.status
-#     category.status = not previous_status
-#     category.modified_by = current_user
-#     category.modified_date = datetime.now(timezone.utc)
-
-#     await engine.save(category)
-
-#     logger.info(
-#         f"🔁 Category {request.category_id} status toggled from {previous_status} to {category.status} by {current_user}"
-#     )
-
-#     try:
-#         await send_event("category.activate_deactivate", {
-#             "action": "activate" if category.status else "deactivate",
-#             "category": category.model_dump(),
-#             "toggled_by": current_user,
-#         })
-#     except Exception as e:
-#         logger.error(f"⚠️ Kafka error while sending category.activate_deactivate: {e}")
-   
-#     return success_response(
-#     category.model_dump(),
-#     message=f"Category {request.category_id} {'activated' if category.status else 'deactivated'} successfully"
-#     )
+    await engine.save(existing_category)
+    return {"status": "success", "message": "Category updated successfully"}

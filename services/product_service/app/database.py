@@ -5,8 +5,9 @@ from odmantic import AIOEngine
 
 load_dotenv()
 
-mongo_url = os.getenv("MONGODB_URL")
+mongo_url = os.getenv("MONGODB_URL", "")
+if not mongo_url:
+    raise ValueError("MONGODB_URL environment variable is not set")
 
 client = AsyncIOMotorClient(mongo_url, uuidRepresentation="standard")
-
-engine = AIOEngine(client=client, database="product_service")
+engine = AIOEngine(client=client, database="semicon_mock")

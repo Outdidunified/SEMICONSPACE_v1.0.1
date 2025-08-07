@@ -1,31 +1,34 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
+from datetime import datetime
 
-
-class ProductSpecificationSchema(BaseModel):
-    product_id: int
-    parameter_name: Optional[str] = None
-    parameter_value: Optional[str] = None
+class ProductSpecificationCreate(BaseModel):
+    #semicon_product_id: str
+   # parameter_id: str
+    parameter_text: Optional[str] = Field(alias="parameterText")
+    parameter_type: Optional[str] = Field(alias="parameterType")
+    created_by: Optional[str] = None
     status: Optional[bool] = True
 
-
-class ProductSpecificationUpdateRequest(ProductSpecificationSchema):
-    spec_id: int
-
-
-class ProductSpecificationStatusToggleRequest(BaseModel):
-    product_id: int
-    spec_id: int
+class ProductSpecificationUpdate(BaseModel):
+    parameter_id: Optional[str] = None
+    parameter_text: Optional[str] = None
+    parameter_type: Optional[str] = None
+    modified_by: Optional[str] = None
+    status: Optional[bool] = None
 
 
-class ProductSpecificationResponseSchema(ProductSpecificationSchema):
-    spec_id: int
-    id: UUID
-    created_date: Optional[datetime]
-    modified_date: Optional[datetime]
+class ProductSpecificationResponse(BaseModel):
+    #semicon_product_id: Optional[str] = None
+    parameter_id: Optional[str] = None
+    parameter_text: Optional[str]  # 🔁 Remove alias
+    parameter_type: Optional[str]  # 🔁 Remove alias
+    status: Optional[bool] = None
+    created_by: Optional[str]
+    created_date: datetime
+    modified_by: Optional[str]
+    modified_date: datetime
 
     class Config:
-        from_attributes = True
-        json_encoders = {UUID: lambda u: str(u)}
+        orm_mode = True

@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any
-from app.models.products_models import Product
+from app.models.products_models import SemiconProduct
 from app.database import engine
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ async def reduce_product_stock(event: Dict[str, Any]):
         return
 
     # Fetch product
-    product = await engine.find_one(Product, Product.product_id == product_id)
+    product = await engine.find_one(SemiconProduct, SemiconProduct.product_id == product_id)
     if not product:
         logger.warning(f"❌ Product {product_id} not found")
         return
