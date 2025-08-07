@@ -1,32 +1,31 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
 from typing import Optional
-from uuid import UUID
+from datetime import datetime
 
 
-class ManufacturerSchema(BaseModel):
-    manufacturer_id: Optional[int] = None
-    name: Optional[str] = None
-    status: Optional[bool] = True
+class SemiconManufacturerCreateSchema(BaseModel):
+    digikey_manufacturer_id: int
+    digikey_name: str
 
 
-class ManufacturerUpdateSchema(BaseModel):
-    name: Optional[str] = None
-    status: Optional[bool] = None
-
-class ManufacturerUpdateRequest(BaseModel):
-    manufacturer_id: int
-    name: Optional[str] = None
-    status: Optional[bool] = None
+class SemiconManufacturerUpdateSchema(BaseModel):
+    semicon_manufacturer_id: str
+    digikey_name: Optional[str] = None
+    modified_by: Optional[str] = "admin"
 
 
-class ManufacturerStatusToggleRequest(BaseModel):
-    manufacturer_id: int
+class SemiconManufacturerStatusToggleSchema(BaseModel):
+    semicon_manufacturer_id: str
+    status: bool
+    modified_by: str
 
-class ManufacturerResponseSchema(ManufacturerSchema):
-    id: UUID
-    created_date: Optional[datetime]
-    modified_date: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+class SemiconManufacturerResponseSchema(BaseModel):
+    semicon_manufacturer_id: str
+    digikey_manufacturer_id: int
+    digikey_name: str
+    created_by: str
+    modified_by: str
+    created_date: datetime
+    modified_date: datetime
+    status: bool
