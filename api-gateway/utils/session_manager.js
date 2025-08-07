@@ -2,7 +2,7 @@ const { loggerInfo, loggerWarn, loggerDebug } = require('./logger');
 
 class SessionManager {
     constructor() {
-        this.activeSessions = new Map(); // userId -> { sessionId, lastActivity, token }
+        this.activeSessions = new Map(); // userId -> [{ sessionId, lastActivity, token }]
         this.sessionTokens = new Map(); // sessionId -> { userId, token, lastActivity }
 
         // Clean up expired sessions every 5 minutes
@@ -12,7 +12,7 @@ class SessionManager {
     }
 
     /**
-     * Register a new session for a user
+     * Register a new session for a user - now supports multiple concurrent sessions
      * @param {string} userId 
      * @param {string} sessionId 
      * @param {string} token 
@@ -20,32 +20,42 @@ class SessionManager {
     registerSession(userId, sessionId, token) {
         const now = Date.now();
 
-        // If user already has an active session, invalidate it
-        if (this.activeSessions.has(userId)) {
-            const oldSession = this.activeSessions.get(userId);
-            this.sessionTokens.delete(oldSession.sessionId);
-            loggerInfo(`Invalidated previous session for user: ${userId}`);
+        // Initialize user's session array if it doesn't exist
+        if (!this.activeSessions.has(userId)) {
+            this.activeSessions.set(userId, []);
         }
 
-        // Register new session
-        const sessionData = {
-            sessionId,
-            lastActivity: now,
-            token
-        };
+        const userSessions = this.activeSessions.get(userId);
 
-        this.activeSessions.set(userId, sessionData);
+        // Check if this session already exists
+        const existingSessionIndex = userSessions.findIndex(s => s.sessionId === sessionId);
+        if (existingSessionIndex !== -1) {
+            // Update existing session
+            userSessions[existingSessionIndex] = {
+                sessionId,
+                lastActivity: now,
+                token
+            };
+        } else {
+            // Add new session
+            userSessions.push({
+                sessionId,
+                lastActivity: now,
+                token
+            });
+        }
+
         this.sessionTokens.set(sessionId, {
             userId,
             token,
             lastActivity: now
         });
 
-        loggerInfo(`Registered new session for user: ${userId}, sessionId: ${sessionId}`);
+        loggerInfo(`Registered session for user: ${userId}, sessionId: ${sessionId}, total sessions: ${userSessions.length}`);
     }
 
     /**
-     * Check if a session is valid
+     * Check if a session is valid - updated for multiple sessions
      * @param {string} sessionId 
      * @param {string} userId 
      * @returns {boolean}
@@ -55,16 +65,18 @@ class SessionManager {
             return false;
         }
 
-        const userSession = this.activeSessions.get(userId);
         const sessionData = this.sessionTokens.get(sessionId);
-
-        if (!userSession || !sessionData) {
+        if (!sessionData || sessionData.userId !== userId) {
             return false;
         }
 
-        // Check if the session belongs to the user
-        if (userSession.sessionId !== sessionId || sessionData.userId !== userId) {
-            loggerWarn(`Session mismatch for user: ${userId}, sessionId: ${sessionId}`);
+        const userSessions = this.activeSessions.get(userId);
+        if (!userSessions) {
+            return false;
+        }
+
+        const userSession = userSessions.find(s => s.sessionId === sessionId);
+        if (!userSession) {
             return false;
         }
 
@@ -83,22 +95,13 @@ class SessionManager {
     invalidateSession(sessionId) {
         const sessionData = this.sessionTokens.get(sessionId);
         if (sessionData) {
-            this.activeSessions.delete(sessionData.userId);
+            const userSessions = this.activeSessions.get(sessionData.userId);
+            if (userSessions) {
+                const filteredSessions = userSessions.filter(s => s.sessionId !== sessionId);
+                this.activeSessions.set(sessionData.userId, filteredSessions);
+            }
             this.sessionTokens.delete(sessionId);
             loggerInfo(`Invalidated session: ${sessionId} for user: ${sessionData.userId}`);
-        }
-    }
-
-    /**
-     * Invalidate all sessions for a user
-     * @param {string} userId 
-     */
-    invalidateUserSessions(userId) {
-        const userSession = this.activeSessions.get(userId);
-        if (userSession) {
-            this.sessionTokens.delete(userSession.sessionId);
-            this.activeSessions.delete(userId);
-            loggerInfo(`Invalidated all sessions for user: ${userId}`);
         }
     }
 
@@ -110,11 +113,14 @@ class SessionManager {
         const maxInactivity = 2 * 60 * 60 * 1000; // 2 hours
         let cleanedCount = 0;
 
-        // Clean up from sessionTokens map
         for (const [sessionId, sessionData] of this.sessionTokens.entries()) {
             if (now - sessionData.lastActivity > maxInactivity) {
+                const userSessions = this.activeSessions.get(sessionData.userId);
+                if (userSessions) {
+                    const filteredSessions = userSessions.filter(s => s.sessionId !== sessionId);
+                    this.activeSessions.set(sessionData.userId, filteredSessions);
+                }
                 this.sessionTokens.delete(sessionId);
-                this.activeSessions.delete(sessionData.userId);
                 cleanedCount++;
             }
         }
@@ -129,9 +135,14 @@ class SessionManager {
      * @returns {object}
      */
     getStats() {
+        let totalSessions = 0;
+        for (const sessions of this.activeSessions.values()) {
+            totalSessions += sessions.length;
+        }
+
         return {
-            activeSessions: this.activeSessions.size,
-            totalSessions: this.sessionTokens.size,
+            activeUsers: this.activeSessions.size,
+            totalSessions,
             timestamp: new Date().toISOString()
         };
     }
