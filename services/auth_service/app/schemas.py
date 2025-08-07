@@ -15,6 +15,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     identifier: str 
     password: str
+    role_id: Optional[int]=2
 
 
 class UserResponse(BaseModel):
