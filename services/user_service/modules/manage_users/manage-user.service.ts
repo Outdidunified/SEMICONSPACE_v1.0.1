@@ -117,6 +117,34 @@ export class ManageUserService {
     }
   }
 
+  // 📦 Add to manage-user.service.ts
+
+async getUserStats() {
+  try {
+    const total = await this.profileModel.count();
+    const active = await this.profileModel.count({ where: { status: true } });
+    const inactive = await this.profileModel.count({ where: { status: false } });
+
+    return {
+      statusCode: HttpStatus.OK,
+      error: false,
+      message: 'User stats fetched successfully',
+      data: {
+        total,
+        active,
+        inactive,
+      },
+    };
+  } catch (error) {
+    return {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      error: true,
+      message: 'Failed to fetch user stats',
+    };
+  }
+}
+
+
   // ✏️ Update user
 async update(userId: string, dto: UpdateManageUserDto & { modified_by: string }) {
   try {
