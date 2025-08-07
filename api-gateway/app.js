@@ -5,6 +5,7 @@ const { verifyJwt } = require('./middlewares/auth_middleware');
 const { loggerInfo, loggerError, loggerWarn, loggerDebug, loggerSuccess } = require('./utils/logger');
 const { createServiceProxy } = require('./utils/proxy');
 const { formatISTDate } = require('./utils/time_formater');
+const { sessionManager } = require('./utils/session_manager');
 const serviceMap = require('./routes/service_map');
 
 const app = express();
@@ -52,6 +53,47 @@ app.get('/health', async (req, res) => {
     version: require('./package.json').version,
     services,
   });
+});
+
+// ✅ Session management endpoints
+app.post('/api/session/register', (req, res) => {
+  const { userId, sessionId, token } = req.body;
+
+  if (!userId || !sessionId || !token) {
+    return res.status(400).json({ error: 'Missing required fields: userId, sessionId, token' });
+  }
+
+  try {
+    sessionManager.registerSession(userId, sessionId, token);
+    loggerInfo(`Session registered successfully for user: ${userId}`);
+    res.status(200).json({ message: 'Session registered successfully' });
+  } catch (error) {
+    loggerError(`Failed to register session: ${error.message}`);
+    res.status(500).json({ error: 'Failed to register session' });
+  }
+});
+
+app.get('/api/session/stats', (req, res) => {
+  try {
+    const stats = sessionManager.getStats();
+    res.status(200).json(stats);
+  } catch (error) {
+    loggerError(`Failed to get session stats: ${error.message}`);
+    res.status(500).json({ error: 'Failed to get session stats' });
+  }
+});
+
+app.delete('/api/session/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    sessionManager.invalidateSession(sessionId);
+    loggerInfo(`Session invalidated: ${sessionId}`);
+    res.status(200).json({ message: 'Session invalidated successfully' });
+  } catch (error) {
+    loggerError(`Failed to invalidate session: ${error.message}`);
+    res.status(500).json({ error: 'Failed to invalidate session' });
+  }
 });
 
 // ✅ Proxy handler
