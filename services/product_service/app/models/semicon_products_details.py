@@ -27,6 +27,7 @@ class Classifications(EmbeddedModel):
 class Manufacturer(EmbeddedModel):
     Id: int
     Name: str
+    semicon_manufacturer_id: str
 
 
 class PackageType(EmbeddedModel):
