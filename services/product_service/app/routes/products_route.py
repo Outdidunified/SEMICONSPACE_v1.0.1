@@ -126,7 +126,11 @@ async def get_all_products(
                 } for doc in raw_products]
                 return transformed_products
 
-        return products
+        return {
+            "error": False,
+            "message": f"products fetched successfully",
+            "data": products,
+        }
 
     except Exception as e:
         print(f"Error fetching products: {str(e)}")
@@ -149,9 +153,12 @@ async def get_product_by_id(product_id: str):
         )
 
         return {
+            "error": False,
+            "message": "Product retrieved successfully",
+            "data": {
             "basic_info": product,
             "detailed_info": product_details,
-            "message": "Product retrieved successfully"
+            }
         }
 
     except HTTPException:
