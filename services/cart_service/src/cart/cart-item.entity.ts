@@ -1,5 +1,4 @@
-// src/cart/cart-item.entity.ts
-import { Entity, Column, PrimaryGeneratedColumn, Double } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('cart_items')
 export class CartItem {
@@ -9,17 +8,11 @@ export class CartItem {
   @Column()
   userId: string;
 
-  @Column()
-  productId: number;
+  @Column({ name: 'productid' }) // productId stored as "productid"
+  productId: string;
 
   @Column()
   quantity: number;
-
-  @Column({ nullable: true })
-  externalProductId: string;
-
-  @Column({ nullable: true })
-  supplier: string;
 
   @Column({ nullable: true })
   name: string;
@@ -27,43 +20,32 @@ export class CartItem {
   @Column({ nullable: true })
   description: string;
 
-  @Column({ nullable: true })
-  manufacturerId: number;
+  @Column({ name: 'manufacturername', nullable: true })
+  manufacturerName: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'manufacturerpartnumber', nullable: true })
   manufacturerPartNumber: string;
 
-  @Column({ nullable: true })
-  category: string;
 
-  @Column({ type: 'double precision', nullable: true }) // or 'double' for MySQL
+  @Column({ type: 'double precision', nullable: true })
   price: number;
 
-  @Column({ nullable: true })
-  packageType: string;
-
-  @Column({ nullable: true })
+  @Column({ name: 'datasheeturl', nullable: true })
   datasheetUrl: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'imageurl', nullable: true })
   imageUrl: string;
 
-  @Column({ type: 'timestamp', nullable: true })
-  lastFetchedAt: Date;
-
-  @Column({ nullable: true })
-  categoryId: number;
-
-  @Column({ nullable: true })
+  @Column({ name: 'createdby', nullable: true })
   createdBy: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'modifiedby', nullable: true })
   modifiedBy: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'createddate', type: 'timestamp', nullable: true })
   createdDate: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'modifieddate', type: 'timestamp', nullable: true })
   modifiedDate: Date;
 
   @Column({ default: true })
