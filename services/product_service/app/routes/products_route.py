@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Path
 from typing import Optional, List
 import httpx
 import uuid
@@ -414,8 +414,8 @@ async def get_total_products():
         raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
 
 
-@router.get("/{product_id}/{quantity}")
-async def check_product_availability(product_id: str, quantity: int):
+@router.get("quanity/{product_id}/{quantity}")
+async def check_product_availability(product_id: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
     """
     Check if a product exists and has sufficient quantity available.
     
