@@ -16,21 +16,21 @@ import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsInt, NotEquals } from 'class-validator';
 
-class AddToCartDto {
+export class AddToCartDto {
   @IsString()
   @IsNotEmpty()
   userId: string;
 
-  @IsNumber()
-  @Min(1)
-  @Type(() => Number)
-  productId: number;
+  @IsString()
+  @IsNotEmpty()
+  productId: string;
 
- @IsInt({ message: 'quantity must be an integer' })
-  @Min(1, { message: 'quantity must be at least 1' }) // 👈 This ensures no -1 or 0
+  @IsInt({ message: 'Quantity must be an integer' })
+  @Min(1, { message: 'Quantity must be at least 1' })
   @Type(() => Number)
   quantity: number;
 }
+
 
 @Controller('cart')
 @UseInterceptors(ClassSerializerInterceptor)
