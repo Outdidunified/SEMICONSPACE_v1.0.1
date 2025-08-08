@@ -7,7 +7,10 @@ from app.database import engine
 from app.models.semicon_products import SemiconProduct
 from app.models.semicon_products_details import SemiconProduct as SemiconProductDetails
 from odmantic.query import QueryExpression
-
+from uuid import UUID
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import Optional
+from bson import ObjectId
 router = APIRouter(prefix="/product")
 
 DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
@@ -135,29 +138,210 @@ async def get_all_products(
     except Exception as e:
         print(f"Error fetching products: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
+    
+
 @router.get("/{product_id}/productdetails")
 async def get_product_by_id(product_id: str):
     try:
+        # Check if product_id is a UUID or semicon_part_number
+        product = None
+        
+        # Try as UUID first
         try:
-            product_uuid = uuid.UUID(product_id)
+            product_uuid = UUID(product_id)
             product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
         except ValueError:
+            # If not UUID, try as semicon_part_number
             product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
 
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        product_details = await engine.find_one(
-            SemiconProductDetails,
-            SemiconProductDetails.semicon_part_number == product.semicon_part_number
-        )
+        # Get product details using the existing engine
+        collection = engine.get_collection(SemiconProduct)
+        
+        # Aggregation pipeline adapted from renderProductFrame
+        aggregation_pipeline = [
+            {"$match": {"semicon_part_number": product.semicon_part_number}},
+            {
+                "$lookup": {
+                    "from": "semicon_product_details",
+                    "localField": "semicon_part_number",
+                    "foreignField": "semicon_part_number",
+                    "as": "product_details"
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "vendor_products",
+                    "localField": "semicon_part_number",
+                    "foreignField": "semicon_part_number",
+                    "as": "vendor_products"
+                }
+            },
+            {"$unwind": {"path": "$vendor_products", "preserveNullAndEmptyArrays": True}},
+            {"$unwind": {"path": "$vendor_products.product_variants", "preserveNullAndEmptyArrays": True}},
+            {
+                "$lookup": {
+                    "from": "product_variants",
+                    "localField": "vendor_products.product_variants",
+                    "foreignField": "semiocon_product_variant_id",
+                    "as": "product_variants"
+                }
+            },
+            {"$unwind": {"path": "$product_variants", "preserveNullAndEmptyArrays": True}},
+            {
+                "$unwind": {
+                    "path": "$product_variants.semicon_product_variant_pricing_id",
+                    "preserveNullAndEmptyArrays": True
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "variant_pricing",
+                    "localField": "product_variants.semicon_product_variant_pricing_id",
+                    "foreignField": "semicon_product_variant_pricing_id",
+                    "as": "product_variants.pricing_details"
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id",
+                    "semicon_part_number": {"$first": "$semicon_part_number"},
+                    "name": {"$first": "$name"},
+                    "description": {"$first": "$description"},
+                    "image_url": {"$first": "$image_url"},
+                    "datasheet_url": {"$first": "$datasheet_url"},
+                    "quantity_available": {"$first": "$quantity_available"},
+                    "unit_price": {"$first": "$unit_price"},
+                    "currency": {"$first": "$currency"},
+                    "status": {"$first": "$status"},
+                    "manufacturerPartNumber": {"$first": "$manufacturerPartNumber"},
+                    "manufacturer_name": {"$first": "$manufacturer_name"},
+                    "created_by": {"$first": "$created_by"},
+                    "created_date": {"$first": "$created_date"},
+                    "modified_by": {"$first": "$modified_by"},
+                    "modified_date": {"$first": "$modified_date"},
+                    "product_details": {"$first": "$product_details"},
+                    "vendor_products": {
+                        "$addToSet": {
+                            "_id": "$vendor_products._id",
+                            "vendor_name": "$vendor_products.vendor_name",
+                            "vendor_product_number": "$vendor_products.vendor_product_number",
+                            "created_by": "$vendor_products.created_by",
+                            "created_date": "$vendor_products.created_date",
+                            "modified_by": "$vendor_products.modified_by",
+                            "modified_date": "$vendor_products.modified_date",
+                            "status": "$vendor_products.status",
+                            "product_variants": "$vendor_products.product_variants"
+                        }
+                    },
+                    "product_variants": {
+                        "$addToSet": {
+                            "$mergeObjects": [
+                                "$product_variants",
+                                {"pricing_details": {"$arrayElemAt": ["$product_variants.pricing_details", 0]}}
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "semicon_part_number": 1,
+                    "name": 1,
+                    "image_url": 1,
+                    "datasheet_url": 1,
+                    "quantity_available": 1,
+                    "unit_price": 1,
+                    "currency": 1,
+                    "status": 1,
+                    "manufacturerPartNumber": 1,
+                    "manufacturer_name": 1,
+                    "created_by": 1,
+                    "created_date": 1,
+                    "modified_by": 1,
+                    "modified_date": 1,
+                    "Category": {"$arrayElemAt": ["$product_details.Category", 0]},
+                    "Description": {
+                        "ProductDescription": "$description",
+                        "DetailedDescription": {"$arrayElemAt": ["$product_details.DetailedDescription", 0]}
+                    },
+                    "Manufacturer": {
+                        "Name": "$manufacturer_name",
+                        "PartNumber": "$manufacturerPartNumber"
+                    },
+                    "ProductDetails": {
+                        "UnitPrice": {"$arrayElemAt": ["$product_details.UnitPrice", 0]},
+                        "ProductUrl": {"$arrayElemAt": ["$product_details.ProductUrl", 0]},
+                        "BackOrderNotAllowed": {"$arrayElemAt": ["$product_details.BackOrderNotAllowed", 0]},
+                        "NormallyStocking": {"$arrayElemAt": ["$product_details.NormallyStocking", 0]},
+                        "Discontinued": {"$arrayElemAt": ["$product_details.Discontinued", 0]},
+                        "EndOfLife": {"$arrayElemAt": ["$product_details.EndOfLife", 0]},
+                        "Ncnr": {"$arrayElemAt": ["$product_details.Ncnr", 0]},
+                        "ManufacturerLeadWeeks": {"$arrayElemAt": ["$product_details.ManufacturerLeadWeeks", 0]},
+                        "Series": {"$arrayElemAt": ["$product_details.Series", 0]},
+                        "Classifications": {"$arrayElemAt": ["$product_details.Classifications", 0]},
+                        "OtherNames": {"$arrayElemAt": ["$product_details.OtherNames", 0]},
+                        "ProductStatus": {"$arrayElemAt": ["$product_details.ProductStatus", 0]}
+                    },
+                    "VendorProducts": "$vendor_products",
+                    "ProductVariants": "$product_variants"
+                }
+            },
+            {"$limit": 1}
+        ]
+
+        # Execute the aggregation using existing engine
+        product_details = await collection.aggregate(aggregation_pipeline).to_list(length=1)
+        
+        if not product_details:
+            # Return basic product info if no details found
+            return {
+                "error": False,
+                "message": "Product retrieved successfully",
+                "data": {
+                    "basic_info": product,
+                    "detailed_info": {
+                        "Category": None,
+                        "Description": {
+                            "ProductDescription": product.description,
+                            "DetailedDescription": None
+                        },
+                        "Manufacturer": {
+                            "Name": product.manufacturer_name,
+                            "PartNumber": product.manufacturerPartNumber
+                        },
+                        "ProductDetails": None,
+                        "VendorProducts": [],
+                        "ProductVariants": []
+                    }
+                }
+            }
+
+        # Format response
+        details = product_details[0]
+        # Filter out empty vendor_products entries
+        vendor_products = [vp for vp in details.get("vendor_products", []) if vp.get("_id")]
+        # Ensure ProductVariants is populated correctly
+        product_variants = details.get("product_variants", []) if details.get("product_variants") else []
 
         return {
             "error": False,
             "message": "Product retrieved successfully",
             "data": {
-            "basic_info": product,
-            "detailed_info": product_details,
+                "basic_info": product,
+                "detailed_info": {
+                    "Category": details.get("Category"),
+                    "Description": details.get("Description"),
+                    "Manufacturer": {
+                        "Name": product.manufacturer_name,
+                        "PartNumber": product.manufacturerPartNumber
+                    },
+                    "ProductDetails": details.get("ProductDetails"),
+                    "VendorProducts": vendor_products,
+                    "ProductVariants": product_variants
+                }
             }
         }
 
@@ -165,7 +349,6 @@ async def get_product_by_id(product_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
-
 
 @router.get("/search/advanced")
 async def search_products(
@@ -229,3 +412,111 @@ async def get_total_products():
         return {"total_products": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
+
+
+@router.get("/{product_id}/{quantity}")
+async def check_product_availability(product_id: str, quantity: int):
+    """
+    Check if a product exists and has sufficient quantity available.
+    
+    Args:
+        product_id: The product ID (UUID) or semicon_part_number
+        quantity: The requested quantity to check
+        
+    Returns:
+        Product details if available, or error message if not found/insufficient quantity
+    """
+    try:
+        # Validate quantity
+        if quantity <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail={"error": True, "message": "Quantity must be greater than 0"}
+            )
+        
+        # Find product by ID or semicon_part_number
+        product = None
+        
+        # Try as UUID first
+        try:
+            product_uuid = UUID(product_id)
+            product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
+        except ValueError:
+            # If not UUID, try as semicon_part_number
+            product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
+        
+        # Check if product exists
+        if not product:
+            raise HTTPException(
+                status_code=404, 
+                detail={
+                    "error": True, 
+                    "message": "Product not found",
+                    "product_id": product_id
+                }
+            )
+        
+        # Check if product has quantity information
+        if product.quantity_available is None:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": "Product quantity information not available",
+                    "product_id": product_id
+                }
+            )
+        
+        # Check if sufficient quantity is available
+        if product.quantity_available < quantity:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
+                    "product_id": product_id,
+                    "requested_quantity": quantity,
+                    "available_quantity": product.quantity_available
+                }
+            )
+        
+        # Return product details if available
+        return {
+            "error": False,
+            "message": "Product available",
+            "data": {
+                "product": {
+                    "id": str(product.id),
+                    "name": product.name,
+                    "semicon_part_number": product.semicon_part_number,
+                    "manufacturer_part_number": product.manufacturerPartNumber,
+                    "manufacturer_name": product.manufacturer_name,
+                    "quantity_available": product.quantity_available,
+                    "unit_price": product.unit_price,
+                    "currency": product.currency,
+                    "description": product.description,
+                    "image_url": product.image_url,
+                    "datasheet_url": product.datasheet_url,
+                    "vendor_details": product.vendor_details,
+                    "status": product.status
+                },
+                "requested_quantity": quantity,
+                "availability_status": "available"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error": True, 
+                "message": f"Error checking product availability: {str(e)}",
+                "product_id": product_id
+            }
+        )
+
+
+
+
