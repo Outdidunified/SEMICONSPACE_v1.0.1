@@ -1,5 +1,4 @@
-// dto/update-managerorder.dto.ts
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class UpdateManagerOrderDto {
   @IsString()
@@ -11,8 +10,9 @@ export class UpdateManagerOrderDto {
 
   @IsOptional()
   @IsString()
-  deliveryAddress?: string;
+  deliveryAddress?: string; // JSON stringified billingDetails
 
   @IsOptional()
+  @IsNumber()
   totalAmount?: number;
 }

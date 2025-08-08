@@ -5,56 +5,72 @@ import {
   DataType,
   PrimaryKey,
 } from 'sequelize-typescript';
-// services/order_service/modules/Manageorder/managerorder.model.ts
 
-@Table({ tableName: 'orders', timestamps: true })
+@Table({ tableName: 'Order', timestamps: true })
 export class ManagerOrder extends Model<ManagerOrder> {
-  @PrimaryKey
-  @Column({ type: DataType.UUID })
+ @Column({ type: DataType.UUID, primaryKey: true, defaultValue: DataType.UUIDV4 })
   orderId!: string;
 
-  @Column({ type: DataType.UUID })
+  @Column({ type: DataType.UUID, allowNull: false })
   userId!: string;
 
-  @Column({ type: DataType.JSONB })
-  items!: any;
+  // Items with productId as string, including name, qty, price, totalPrice
+  @Column(DataType.JSONB)
+  items!: Array<{ productId: string; name: string; qty: number; price: number; totalPrice: number }>;
 
-  @Column({ type: DataType.DOUBLE })
+  @Column(DataType.FLOAT)
+  subtotal!: number;
+
+  @Column(DataType.FLOAT)
+  gstAmount!: number;
+
+  @Column(DataType.FLOAT)
+  shippingCharge!: number;
+
+  @Column(DataType.FLOAT)
   total!: number;
 
   @Column({ type: DataType.STRING, defaultValue: 'pending' })
   status!: string;
 
-  @Column({ type: DataType.JSONB })
-  deliveryAddress!: {
+  @Column(DataType.JSONB)
+  billingDetails!: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
     address: string;
-    pin: string;
-    city: string;
+    country: string;
     state: string;
+    city: string;
+    pin: string;
   };
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column(DataType.STRING)
   razorpayOrderId!: string;
 
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column(DataType.STRING)
   razorpayPaymentId!: string;
 
-  // ✅ Updated to match renamed DB columns
-  @Column({ type: DataType.DATE, allowNull: true, field: 'confirmedat' })
-  confirmedAt!: Date;
+  @Column({ type: DataType.DATE, field: 'confirmedat', allowNull: true })
+  confirmedAt?: Date;
 
-  @Column({ type: DataType.DATE, allowNull: true, field: 'shippedat' })
-  shippedAt!: Date;
+  @Column({ type: DataType.DATE, field: 'shippedat', allowNull: true })
+  shippedAt?: Date;
 
-  @Column({ type: DataType.DATE, allowNull: true, field: 'outfordeliveryat' })
-  outForDeliveryAt!: Date;
+  @Column({ type: DataType.DATE, field: 'outfordeliveryat', allowNull: true })
+  outForDeliveryAt?: Date;
 
-  @Column({ type: DataType.DATE, allowNull: true, field: 'deliveredat' })
-  deliveredAt!: Date;
+  @Column({ type: DataType.DATE, field: 'deliveredat', allowNull: true })
+  deliveredAt?: Date;
 
-  @Column({ type: DataType.DATE, field: 'createdat' })
-  createdAt!: Date;
+  // createdAt and updatedAt will be handled automatically by Sequelize because timestamps: true
+  // but if your DB columns are snake_case, map them explicitly:
 
-  @Column({ type: DataType.DATE, field: 'updatedat' })
-  updatedAt!: Date;
+ @Column({ type: DataType.DATE, field: 'createdAt' })
+createdAt!: Date;
+
+@Column({ type: DataType.DATE, field: 'updatedAt' })
+updatedAt!: Date;
+
 }
