@@ -127,3 +127,102 @@ async def get_category_by_id(category_id: str):
                 "data": []
             }
         )
+
+@router.get("/categories/child/{child_category_id}", tags=["Semicon Categories"])
+async def get_child_category_by_id(child_category_id: str):
+    """Get a specific child category by semicon_child_category_id"""
+    try:
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconCategory)
+        
+        # Search for child category across all parent categories
+        pipeline = [
+            {
+                "$unwind": "$child_categories"
+            },
+            {
+                "$match": {
+                    "child_categories.semicon_child_category_id": child_category_id
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "parent_category": {
+                        "semicon_category_id": "$semicon_category_id",
+                        "digikey_name": "$digikey_name"
+                    },
+                    "child_category": {
+                        "semicon_child_category_id": "$child_categories.semicon_child_category_id",
+                        "semicon_child_parent_id": "$child_categories.semicon_child_parent_id",
+                        "digikey_child_category_id": "$child_categories.digikey_child_category_id",
+                        "digikey_child_name": "$child_categories.digikey_child_name",
+                        "digikey_parent_id": "$child_categories.digikey_parent_id",
+                        "product_count": "$child_categories.product_count",
+                        "created_by": "$child_categories.created_by",
+                        "created_date": "$child_categories.created_date",
+                        "modified_by": "$child_categories.modified_by",
+                        "modified_date": "$child_categories.modified_date",
+                        "status": "$child_categories.status",
+                        "child_categories": "$child_categories.child_categories"
+                    }
+                }
+            }
+        ]
+        
+        cursor = collection.aggregate(pipeline)
+        result = await cursor.to_list(None)
+        
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": True,
+                    "message": f"Child category with ID {child_category_id} not found",
+                    "data": []
+                }
+            )
+        
+        # Transform the result to match the standard format
+        child_category_data = result[0]["child_category"]
+        parent_category_data = result[0]["parent_category"]
+        
+        # Transform nested child categories if any
+        if "child_categories" in child_category_data:
+            child_category_data["child_categories"] = [
+                {
+                    "semicon_child_category_id": grandchild.get("semicon_child_category_id"),
+                    "semicon_child_parent_id": grandchild.get("semicon_child_parent_id"),
+                    "digikey_child_category_id": grandchild.get("digikey_child_category_id"),
+                    "digikey_child_name": grandchild.get("digikey_child_name"),
+                    "digikey_parent_id": grandchild.get("digikey_parent_id"),
+                    "product_count": grandchild.get("product_count", 0),
+                    "created_by": grandchild.get("created_by"),
+                    "created_date": grandchild.get("created_date"),
+                    "modified_by": grandchild.get("modified_by"),
+                    "modified_date": grandchild.get("modified_date"),
+                    "status": grandchild.get("status", True)
+                }
+                for grandchild in child_category_data.get("child_categories", [])
+            ]
+        
+        return {
+            "error": False,
+            "message": "Child category fetched successfully",
+            "data": {
+                "parent_category": jsonable_encoder(parent_category_data),
+                "child_category": jsonable_encoder(child_category_data)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching child category: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to fetch child category: {str(e)}",
+                "data": []
+            }
+        )
