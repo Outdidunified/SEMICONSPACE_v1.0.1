@@ -21,10 +21,7 @@ export class OrderService {
       subtotal,
       gstAmount,
       shippingCharge,
-      total,
-      razorpayOrderId,
-      razorpayPaymentId,
-      // Removed status from destructuring intentionally
+      total
     } = payload;
 
     if (!userId) throw new Error('User ID is required');
@@ -45,16 +42,16 @@ export class OrderService {
     if (cartItems.length === 0) throw new Error('Cart is empty');
 
     // 2️⃣ Check that all requested products are in the cart
-    for (const p of items) {
-      const found = cartItems.find(
-        (c: any) => c.productId === p.productId && c.quantity >= p.qty,
-      );
-      if (!found) {
-        throw new Error(`Product ${p.name} not found in cart or insufficient quantity`);
-      }
-    }
+   for (const p of items) {
+  const found = cartItems.find(
+    (c: any) => c.productId === Number(p.productId) && c.quantity >= p.qty,
+  );
+  if (!found) {
+    throw new Error(`Product ${p.name} not found in cart or insufficient quantity`);
+  }
+}
 
-    // 3️⃣ Create the order in DB with status always 'pending'
+    // 3️⃣ Create the order in DB
     try {
       const order = await Order.create({
         userId,
@@ -63,9 +60,6 @@ export class OrderService {
         gstAmount,
         shippingCharge,
         total,
-        razorpayOrderId,
-        razorpayPaymentId,
-        status: 'pending',  // <-- Force status to 'pending' here
         billingDetails,
       });
 

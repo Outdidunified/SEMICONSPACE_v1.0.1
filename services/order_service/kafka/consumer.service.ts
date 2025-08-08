@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Kafka } from 'kafkajs';
 import axios from 'axios';
 import { Order } from '../modules/order/order.model';
@@ -6,6 +6,8 @@ import { OrderService } from '../modules/order/order.service';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit {
+  private readonly logger = new Logger(KafkaConsumerService.name);
+
   constructor(private readonly orderService: OrderService) {}
 
   async onModuleInit() {
@@ -18,83 +20,80 @@ export class KafkaConsumerService implements OnModuleInit {
     await consumer.run({
       eachMessage: async ({ topic, message }) => {
         if (topic === 'payment.success') {
-          const data = JSON.parse(message.value.toString());
-          const { orderId, razorpayOrderId, razorpayPaymentId } = data;
-
-          const order = await Order.findByPk(orderId);
-          if (!order) return;
-
-          order.status = 'confirmed';
-          order.razorpayOrderId = razorpayOrderId;
-          order.razorpayPaymentId = razorpayPaymentId;
-          await order.save();
-
-          console.log(` Order ${orderId} marked as confirmed with Razorpay IDs.`);
-
-          // Fetch full order with profile and address
-          const fullOrder = await this.orderService.getOrderById(orderId);
-          const { userProfile, deliveryAddress, items } = fullOrder;
-
-          // Safety defaults (but no static values)
-          const shipping_phone = userProfile?.phone || null;
-          const shipping_zipcode = deliveryAddress?.pin || null;
-          const shipping_address = deliveryAddress?.address || null;
-          const shipping_city = deliveryAddress?.city || null;
-          const shipping_state = deliveryAddress?.state || null;
-          const shipping_firstname = userProfile?.first_name || null;
-          const shipping_lastname = userProfile?.last_name || null;
-
-          const products = Array.isArray(items)
-            ? items.map((item) => ({
-                product: `Product-${item.productId}`,
-price: ((item.totalPrice ?? item.totalprice) / item.qty).toFixed(2),
-                product_code: item.productId,
-                product_quantity: String(item.qty),
-                discount: item.discount || "0",
-                tax_rate: item.taxRate || "0", // If available in item
-                tax_title: item.taxTitle || null, // Optional
-              }))
-            : [];
-
-          const payload: any = {
-            order_id: fullOrder.orderId,
-            products,
-            payment_type: "PrePaid", // Assuming it's always prepaid. Adjust if needed.
-            ewaybill: "NA",
-            shipping_country: "India",
-            shipping_phone,
-            shipping_zipcode,
-            shipping_address,
-            shipping_city,
-            shipping_state,
-            shipping_firstname,
-            shipping_lastname,
-            order_date: new Date(fullOrder.createdAt)
-              .toISOString()
-              .slice(0, 19)
-              .replace("T", " "),
-            shipping: fullOrder.shippingFee ?? 0,
-            order_total: fullOrder.total,
-            taxes: fullOrder.taxes ?? 0,
-            // Optional box dimensions if available
-            order_weight: fullOrder.weight ?? null,
-            box_length: fullOrder.length ?? null,
-            box_breadth: fullOrder.breadth ?? null,
-            box_height: fullOrder.height ?? null,
-          };
-
-          // Clean null/undefined keys from payload
-          Object.keys(payload).forEach(
-            (key) =>
-              (payload[key] === null || payload[key] === undefined) &&
-              delete payload[key],
-          );
-
           try {
-            const res = await axios.post('http://192.168.1.25:8010/shipway/receive-order', payload);
-            console.log(` Sent order ${orderId} to Shipway. Response:`, res.data);
-          } catch (error) {
-            console.error(` Failed to send order ${orderId} to Shipway:`, error.message);
+            const data = JSON.parse(message.value.toString());
+            const { orderId, razorpayOrderId, razorpayPaymentId } = data;
+
+            const order = await Order.findByPk(orderId);
+            if (!order) {
+              this.logger.warn(`Order ${orderId} not found`);
+              return;
+            }
+
+            // Update order status & payment info
+            order.status = 'confirmed';
+            order.razorpayOrderId = razorpayOrderId;
+            order.razorpayPaymentId = razorpayPaymentId;
+            order.confirmedAt = new Date();
+            await order.save();
+
+            this.logger.log(`Order ${orderId} marked as confirmed`);
+
+            // Fetch fresh order details via OrderService
+            const fullOrder = await this.orderService.getOrderById(orderId);
+            const { deliveryAddress, items } = fullOrder;
+
+            // Prepare payload for external API
+            const products = Array.isArray(items)
+              ? items.map((item) => ({
+                  product: item.name || `Product-${item.productId}`,
+                  price: ((item.totalPrice ?? item.totalprice) / item.qty).toFixed(2),
+                  product_code: item.productId,
+                  product_quantity: String(item.qty),
+                  discount: item.discount || '0',
+                  tax_rate: item.taxRate || '0',
+                  tax_title: item.taxTitle || null,
+                }))
+              : [];
+
+            const payload = {
+              order_id: fullOrder.orderId,
+              products,
+              payment_type: 'PrePaid', // adjust if needed
+              ewaybill: 'NA',
+              shipping_country: deliveryAddress?.country || 'India',
+              shipping_phone: deliveryAddress?.phone || null,
+              shipping_zipcode: deliveryAddress?.pin || null,
+              shipping_address: deliveryAddress?.address || null,
+              shipping_city: deliveryAddress?.city || null,
+              shipping_state: deliveryAddress?.state || null,
+              shipping_firstname: deliveryAddress?.first_name || null,
+              shipping_lastname: deliveryAddress?.last_name || null,
+              order_date: new Date(fullOrder.createdAt).toISOString().slice(0, 19).replace('T', ' '),
+              shipping: fullOrder.shippingCharge ?? 0,
+              order_total: fullOrder.total,
+              taxes: fullOrder.gstAmount ?? 0,
+              order_weight: fullOrder.weight ?? null,
+              box_length: fullOrder.length ?? null,
+              box_breadth: fullOrder.breadth ?? null,
+              box_height: fullOrder.height ?? null,
+            };
+
+            // Remove null or undefined keys
+            Object.keys(payload).forEach(
+              (key) =>
+                (payload[key] === null || payload[key] === undefined) && delete payload[key],
+            );
+
+            // Send to external API
+            const response = await axios.post(
+              'http://192.168.1.25:8010/shipway/receive-order',
+              payload,
+            );
+
+            this.logger.log(`Sent order ${orderId} to external API: ${JSON.stringify(response.data)}`);
+          } catch (err: any) {
+            this.logger.error(`Failed processing payment.success for order: ${err.message}`, err.stack);
           }
         }
       },

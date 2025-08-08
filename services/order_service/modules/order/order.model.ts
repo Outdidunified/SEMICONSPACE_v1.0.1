@@ -1,6 +1,6 @@
 import { Column, DataType, Model, Table } from 'sequelize-typescript';
 
-@Table({ tableName: 'orders', timestamps: true })
+@Table({ tableName: 'Order', timestamps: true })
 export class Order extends Model {
   @Column({ type: DataType.UUID, primaryKey: true, defaultValue: DataType.UUIDV4 })
   orderId!: string;
@@ -8,6 +8,7 @@ export class Order extends Model {
   @Column({ type: DataType.UUID, allowNull: false })
   userId!: string;
 
+  // Items with productId as string, including name, qty, price, totalPrice
   @Column(DataType.JSONB)
   items!: Array<{ productId: string; name: string; qty: number; price: number; totalPrice: number }>;
 
@@ -16,12 +17,6 @@ export class Order extends Model {
 
   @Column(DataType.FLOAT)
   gstAmount!: number;
-
-  @Column(DataType.STRING)
-  razorpayOrderId!: string;
-
-  @Column(DataType.STRING)
-  razorpayPaymentId!: string;
 
   @Column(DataType.FLOAT)
   shippingCharge!: number;
@@ -44,4 +39,32 @@ export class Order extends Model {
     city: string;
     pin: string;
   };
-} 
+
+  @Column(DataType.STRING)
+  razorpayOrderId!: string;
+
+  @Column(DataType.STRING)
+  razorpayPaymentId!: string;
+
+  @Column({ type: DataType.DATE, field: 'confirmedat', allowNull: true })
+  confirmedAt?: Date;
+
+  @Column({ type: DataType.DATE, field: 'shippedat', allowNull: true })
+  shippedAt?: Date;
+
+  @Column({ type: DataType.DATE, field: 'outfordeliveryat', allowNull: true })
+  outForDeliveryAt?: Date;
+
+  @Column({ type: DataType.DATE, field: 'deliveredat', allowNull: true })
+  deliveredAt?: Date;
+
+  // createdAt and updatedAt will be handled automatically by Sequelize because timestamps: true
+  // but if your DB columns are snake_case, map them explicitly:
+
+ @Column({ type: DataType.DATE, field: 'createdAt' })
+createdAt!: Date;
+
+@Column({ type: DataType.DATE, field: 'updatedAt' })
+updatedAt!: Date;
+
+}
