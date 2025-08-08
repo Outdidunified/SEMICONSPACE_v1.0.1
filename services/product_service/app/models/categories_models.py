@@ -1,46 +1,40 @@
-from __future__ import annotations
-from odmantic import Model, Field
-from typing import List, Optional
+from odmantic import Model, Field, ObjectId
+from typing import List, Optional, Union
 from datetime import datetime
-from uuid import UUID
-
 
 class SemiconChildCategory(Model):
-    #id: UUID
     semicon_child_category_id: Optional[str] = None
     semicon_child_parent_id: Optional[str] = None
-    digikey_child_category_id:  Optional[int] = None
+    digikey_child_category_id: Optional[Union[int, str]] = None
     digikey_child_name: Optional[str] = None
-    digikey_parent_id: Optional[str] = None
+    digikey_parent_id: Optional[Union[int, str]] = None
     product_count: int = 0
-    child_categories: List["SemiconChildCategory"] = Field(default_factory=list)  # ✅ No Optional
-    created_by:  Optional[str] = None
+    child_categories: List["SemiconChildCategory"] = Field(default_factory=list)
+    created_by: Optional[str] = None
     modified_by: Optional[str] = None
     created_date: datetime
     modified_date: datetime
     status: bool = True
 
-# ✅ Rebuild forward refs
 SemiconChildCategory.model_rebuild()
 
-
 class SemiconCategory(Model):
-    #id: UUID
-    semicon_category_id: str
+    id: Optional[ObjectId] = Field(default=None, primary_field=True)
+    semicon_category_id: Optional[str] = None
     semicon_parent_id: Optional[str] = None
-    digikey_category_id: int
-    digikey_name: str
-    digikey_parent_id: str
+    digikey_category_id: Optional[Union[int, str]] = None
+    digikey_name: Optional[str] = None
+    digikey_parent_id: Optional[Union[int, str]] = None
     product_count: int = 0
     child_categories: List[SemiconChildCategory] = Field(default_factory=list)
-    created_by: str
-    modified_by: str
-    created_date: datetime
-    modified_date: datetime
+    created_by: Optional[str] = None
+    modified_by: Optional[str] = None
+    created_date: Optional[datetime] = None
+    modified_date: Optional[datetime] = None
     status: bool = True
 
     model_config = {
-        "collection": "semicon_categories"
+        "collection": "categories"
     }
 
 SemiconCategory.model_rebuild()

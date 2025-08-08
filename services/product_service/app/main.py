@@ -13,7 +13,7 @@ from app.database import client
 #from app.kafka.kafka_consumer import start_consumer
 
 # Routers
-#from app.routes.products_route import router as products_router
+from app.routes.products_route import router as products_router
 from app.routes.categories_route import router as categories_router
 # from app.routes.pricing_route import router as pricing_router
 # from app.routes.specification_route import router as specification_route
@@ -107,7 +107,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
             "message": "Internal Server Error"
         }
     )
-#app.include_router(products_router)
+app.include_router(products_router)
 app.include_router(categories_router)
 # app.include_router(pricing_router)
 # app.include_router(specification_route)
