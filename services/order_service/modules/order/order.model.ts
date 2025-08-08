@@ -17,6 +17,12 @@ export class Order extends Model {
   @Column(DataType.FLOAT)
   gstAmount!: number;
 
+  @Column(DataType.STRING)
+  razorpayOrderId!: string;
+
+  @Column(DataType.STRING)
+  razorpayPaymentId!: string;
+
   @Column(DataType.FLOAT)
   shippingCharge!: number;
 
@@ -38,4 +44,4 @@ export class Order extends Model {
     city: string;
     pin: string;
   };
-}
+} 

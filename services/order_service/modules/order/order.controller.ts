@@ -10,6 +10,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 
 @Controller('order')
 export class OrderController {
@@ -19,7 +20,7 @@ export class OrderController {
 
   @Post('createorder')
   @HttpCode(HttpStatus.OK)
-  async placeOrder(@Body() payload: any) {
+  async placeOrder(@Body() payload: CreateOrderDto) {
     try {
       const order = await this.orderService.createOrderFromPayload(payload);
       return { error: false, order };
@@ -36,7 +37,10 @@ export class OrderController {
   @HttpCode(HttpStatus.OK)
   async getOrdersByUser(@Body('userId') userId: string) {
     if (!userId) {
-      throw new HttpException({ error: true, message: 'User ID is required' }, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { error: true, message: 'User ID is required' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     try {
@@ -55,7 +59,10 @@ export class OrderController {
   @HttpCode(HttpStatus.OK)
   async getOrder(@Param('orderId') orderId: string) {
     if (!orderId) {
-      throw new HttpException({ error: true, message: 'Order ID is required' }, HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { error: true, message: 'Order ID is required' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     try {
