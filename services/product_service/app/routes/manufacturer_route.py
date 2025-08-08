@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from odmantic import ObjectId
 from datetime import datetime
 from typing import Optional
-from app.database import engine
+from app.database import engine, client
 from app.models.manufacturers_models import SemiconManufacturer
 from app.models.semicon_products_details import SemiconProduct
 from app.schemas.manufacturers_schema import (
@@ -25,7 +25,6 @@ def transform_mongo_doc(doc):
     
     # Create ordered dictionary with _id first
     ordered_dict = {
-        "_id": str(doc_dict.get("id")),
         "created_by": doc_dict.get("created_by"),
         "created_date": doc_dict.get("created_date").isoformat().replace("+00:00", "Z") if doc_dict.get("created_date") else None,
         "digikey_manufacturer_id": doc_dict.get("digikey_manufacturer_id"),
@@ -42,14 +41,33 @@ def transform_mongo_doc(doc):
 @router.get("/manufacturer/all", tags=["Semicon Manufacturer"])
 async def get_all_manufacturers():
     """Get all manufacturers with standardized response format"""
-    raw_data = await engine.find(SemiconManufacturer)
-    cleaned_data = [transform_mongo_doc(doc) for doc in raw_data]
-    
-    return {
-        "error": False,
-        "message": "Manufacturers fetched successfully",
-        "data": jsonable_encoder(cleaned_data)
-    }
+    try:
+        raw_data = await engine.find(SemiconManufacturer)
+        cleaned_data = [transform_mongo_doc(doc) for doc in raw_data]
+        
+        return {
+            "error": False,
+            "message": "Manufacturers fetched successfully",
+            "data": jsonable_encoder(cleaned_data)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching manufacturers: {str(e)}")
+        # Fallback to raw MongoDB query if ODMantic validation fails
+        raw_docs = await engine.find(SemiconManufacturer, limit=1000)
+        cleaned_data = []
+
+        for doc in raw_docs:
+            try:
+                manufacturer = SemiconManufacturer.model_validate(doc)
+                cleaned_data.append(transform_mongo_doc(manufacturer))
+            except Exception as e:
+                logger.warning(f"Skipping invalid manufacturer document: {e}")
+
+        return {
+            "error": False,
+            "message": "Manufacturers fetched successfully (some invalid documents may have been skipped)",
+            "data": jsonable_encoder(cleaned_data)
+        }
 
 
 @router.get("/manufacturer/{manufacturer_id}/products", tags=["Products by Manufacturer"])
