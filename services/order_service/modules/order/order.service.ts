@@ -42,6 +42,7 @@ export class OrderService {
     if (cartItems.length === 0) throw new Error('Cart is empty');
  
     // 2️⃣ Check that all requested products are in the cart
+    // allow 
    for (const p of items) {
   const found = cartItems.find(
   (c: any) =>
