@@ -3,6 +3,7 @@ from typing import Optional, List
 import httpx
 import re
 import uuid
+from urllib.parse import quote
 from odmantic import query
 from app.services.sync_semicon_products import fetch_and_sync_semicon_product
 from app.database import engine
@@ -14,6 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional
 from bson import ObjectId
 from app.kafka.kafka_producer import send_event
+import asyncio
 router = APIRouter(prefix="/product")
 
 DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
@@ -37,6 +39,7 @@ async def sync_digikey_product(payload: dict):
 
         synced = 0
         skipped = 0
+        result_main = []
 
         for product_basic in search_data["products"]:
             digi_part_number = product_basic["digiKeyPartNumber"]
@@ -65,12 +68,12 @@ async def sync_digikey_product(payload: dict):
             merged_data = {**product_basic, **details_data["product"]}
             result= await fetch_and_sync_semicon_product(merged_data)
             synced += 1
-
+            result_main.append(result)
            # print(f"Synced product: {merged_data}")
     return {
         "status": "success",
         "message": f"Sync completed: {synced} products synced, {skipped} products skipped (already exists or failed).",
-        "returned_data": result
+        "returned_data": result_main
     }
 
 
@@ -533,58 +536,127 @@ async def check_product_availability(product_id: str, quantity: int = Path(..., 
             }
 
         )
+@router.get("/analytics/count/totalproducts")
+async def get_total_products():
+    try:
+        count = await engine.count(SemiconProduct)
+        return {
+            "error": False,
+            "message": "Total products count retrieved successfully",
+            "total_products": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
+# Fetch details for one product with URL-encoding
+async def fetch_details(part_number: str, client: httpx.AsyncClient):
+    encoded_part_number = quote(part_number)
+    details_url = f"http://172.232.110.10:8003/product/{encoded_part_number}/productdetails"
+    try:
+        resp = await client.get(details_url, timeout=httpx.Timeout(180.0, connect=5.0))  # 10s total timeout, 5s connect
+        resp.raise_for_status()
+        data = resp.json()
+      #  print(f"Fetched details for {part_number}: {data}")  # Log actual data returned
+        return data
+    except httpx.TimeoutException as e:
+        print(f"[WARN] Timeout fetching details for {part_number}: {e}")
+        return {"semicon_part_number": part_number, "error": "Timeout"}
+    except Exception as e:
+        print(f"[WARN] Failed to fetch details for {part_number}: {repr(e)}")
+        return {"semicon_part_number": part_number, "error": str(e)}
+
+async def safe_fetch_details(part_number: str, client: httpx.AsyncClient):
+    try:
+        data = await fetch_details(part_number, client)
+        if not data:
+            print(f"[WARN] Empty data returned for {part_number}")
+        return data
+    except Exception as e:
+        print(f"[WARN] Failed to fetch details for {part_number}: {repr(e)}")
+        return {"semicon_part_number": part_number, "error": str(e)}
 @router.get("/search/{query}")
 async def search_and_get_details(query: str):
-    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
-        try:
-            # Mongo $or search
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=5.0)) as client:
+            # 1. Search in Mongo
             search_query = {
                 "$or": [
                     {"name": {"$regex": query, "$options": "i"}},
                     {"Manufacturer.Name": {"$regex": query, "$options": "i"}},
                     {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}},
                     {"Category.Name": {"$regex": query, "$options": "i"}},
+                    {"manufacturer_part_number": {"$regex": query, "$options": "i"}},
                 ]
             }
 
-            # Search in Mongo
             collection = engine.get_collection(SemiconProductDetails)
-            product_match = await collection.find_one(search_query)
+            mongo_matches = await collection.find(search_query).to_list(length=None)
 
-            if product_match and product_match.get("semicon_part_number"):
-                semicon_part_number = product_match["semicon_part_number"]
-                details_url = f"http://localhost:8002/product/{semicon_part_number}/productdetails"
-                print("coming")
-                resp = await client.get(details_url)
-                resp.raise_for_status()
-                return resp.json()
-            print("coming2")
-            # If not found → DigiKey sync
-            digi_url = "http://localhost:8000/product/sync/digikey"
-            digi_resp = await client.post(digi_url, json={"query": query})
-            digi_resp.raise_for_status()
-            digi_data = digi_resp.json()
-
-            products = digi_data.get("products", [])
-            if not products:
-                raise HTTPException(status_code=404, detail="No products found")
-
-            # Get first product's details
-            semicon_part_number = products[0].get("semicon_part_number")
-            if not semicon_part_number:
-                raise HTTPException(status_code=500, detail="First product missing part number")
-
-            detail_url = f"http://localhost:8002/product/{semicon_part_number}/productdetails"
-            detail_resp = await client.get(detail_url)
-            detail_resp.raise_for_status()
-            print("coming3")
-
-            return {
-                "message": "Products synced from DigiKey",
-                "data": [detail_resp.json()]
+            mongo_part_numbers = {
+                doc.get("semicon_part_number")
+                for doc in mongo_matches if doc.get("semicon_part_number")
             }
 
-        except httpx.ConnectError as e:
-            raise HTTPException(status_code=502, detail=f"Connection to service failed: {str(e)}")
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Request failed: {str(e)}")
+            # 2. Get details for Mongo matches
+            mongo_details = await asyncio.gather(
+                *(safe_fetch_details(pn, client) for pn in mongo_part_numbers),
+                return_exceptions=False
+            )
+
+            # 3. DigiKey sync
+            digi_url = "http://172.232.110.10:8003/product/sync/digikey"
+            digi_products = []
+
+            digi_resp = await client.post(digi_url, json={"query": query})
+
+            if digi_resp.status_code == 404:
+                print(f"[INFO] DigiKey: No products found for query '{query}'")
+            elif digi_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"DigiKey sync failed ({digi_resp.status_code}): {digi_resp.text}"
+                )
+            else:
+                try:
+                    digi_data = digi_resp.json()
+                except ValueError:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"DigiKey returned non-JSON: {digi_resp.text[:200]}"
+                    )
+
+                products = digi_data.get("products", [])
+                if isinstance(products, list):
+                    digi_products = products
+                else:
+                    print("[WARN] DigiKey returned invalid product list")
+
+            digi_part_numbers = {
+                p.get("semicon_part_number")
+                for p in digi_products if p.get("semicon_part_number")
+            }
+
+            # 4. Only fetch DigiKey products that aren't in Mongo
+            new_part_numbers = digi_part_numbers - mongo_part_numbers
+
+            # 5. Get details for DigiKey products
+            digi_details = await asyncio.gather(
+                *(safe_fetch_details(pn, client) for pn in new_part_numbers),
+                return_exceptions=False
+            )
+
+            # 6. Merge results
+            all_results = mongo_details + digi_details
+            all_results = [r for r in all_results if r]  # remove None
+
+            if not all_results:
+                raise HTTPException(status_code=404, detail="No products found")
+
+            return {
+                "message": "Products retrieved successfully",
+                "count": len(all_results),
+                "data": all_results
+            }
+
+    except httpx.ConnectError as e:
+        raise HTTPException(status_code=502, detail=f"Connection failed: {str(e)}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Request error: {str(e)}")
