@@ -44,8 +44,12 @@ export class OrderService {
     // 2️⃣ Check that all requested products are in the cart
    for (const p of items) {
   const found = cartItems.find(
-    (c: any) => c.productId === Number(p.productId) && c.quantity >= p.qty,
-  );
+  (c: any) =>
+    c.productId.toString().trim().toLowerCase() ===
+      p.productId.toString().trim().toLowerCase() &&
+    c.quantity >= p.qty,
+);
+
   if (!found) {
     throw new Error(`Product ${p.name} not found in cart or insufficient quantity`);
   }
