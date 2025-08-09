@@ -34,23 +34,26 @@ export class ManagerOrderService {
     }
   }
 
-  async findAll(): Promise<any> {
-    const data = await this.orderModel.findAll();
+ async findAll(): Promise<any> {
+  const data = await this.orderModel.findAll({
+    where: { status: { [Op.ne]: 'pending' } }, // exclude pending
+  });
 
-    if (!data || data.length === 0) {
-      throw new HttpException(
-        { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'No orders found' },
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    return {
-      statusCode: HttpStatus.OK,
-      error: false,
-      message: 'Orders fetched successfully',
-      data: data.map(order => order.toJSON()),
-    };
+  if (!data || data.length === 0) {
+    throw new HttpException(
+      { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'No orders found' },
+      HttpStatus.NOT_FOUND,
+    );
   }
+
+  return {
+    statusCode: HttpStatus.OK,
+    error: false,
+    message: 'Orders fetched successfully',
+    data: data.map(order => order.toJSON()),
+  };
+}
+
 
   async findOne(orderId: string): Promise<any> {
     this.validateUUID(orderId, 'Order ID');
@@ -71,55 +74,68 @@ export class ManagerOrderService {
     };
   }
 
-  async update(orderId: string, dto: UpdateManagerOrderDto): Promise<any> {
-    this.validateUUID(orderId, 'Order ID');
+ async update(orderId: string, dto: UpdateManagerOrderDto): Promise<any> {
+  this.validateUUID(orderId, 'Order ID');
 
-    const existingOrder = await this.orderModel.findByPk(orderId);
-    if (!existingOrder) {
+  const existingOrder = await this.orderModel.findByPk(orderId);
+  if (!existingOrder) {
+    throw new HttpException(
+      { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'Order not found' },
+      HttpStatus.NOT_FOUND,
+    );
+  }
+
+  // ✅ Prevent updating to same status
+  if (dto.status && existingOrder.status?.toLowerCase() === dto.status.toLowerCase()) {
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Order is already ${existingOrder.status.toLowerCase()}`,
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  const now = new Date();
+
+  switch (dto.status?.toLowerCase()) {
+    case 'shipped':
+      existingOrder.shippedAt = now;
+      break;
+    case 'out for delivery':
+    case 'out-for-delivery':
+      existingOrder.outForDeliveryAt = now;
+      break;
+    case 'delivered':
+      existingOrder.deliveredAt = now;
+      break;
+  }
+
+  if (dto.status) existingOrder.status = dto.status;
+  if (dto.totalAmount !== undefined) existingOrder.total = dto.totalAmount;
+
+  if (dto.deliveryAddress) {
+    try {
+      existingOrder.billingDetails = JSON.parse(dto.deliveryAddress);
+    } catch {
       throw new HttpException(
-        { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'Order not found' },
-        HttpStatus.NOT_FOUND,
+        { statusCode: HttpStatus.BAD_REQUEST, error: true, message: 'Invalid address format' },
+        HttpStatus.BAD_REQUEST,
       );
     }
-
-    const now = new Date();
-
-    switch (dto.status?.toLowerCase()) {
-      case 'shipped':
-        existingOrder.shippedAt = now;
-        break;
-      case 'out for delivery':
-      case 'out-for-delivery':
-        existingOrder.outForDeliveryAt = now;
-        break;
-      case 'delivered':
-        existingOrder.deliveredAt = now;
-        break;
-    }
-
-    if (dto.status) existingOrder.status = dto.status;
-    if (dto.totalAmount !== undefined) existingOrder.total = dto.totalAmount;
-
-    if (dto.deliveryAddress) {
-      try {
-        existingOrder.billingDetails = JSON.parse(dto.deliveryAddress);
-      } catch {
-        throw new HttpException(
-          { statusCode: HttpStatus.BAD_REQUEST, error: true, message: 'Invalid address format' },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-
-    await existingOrder.save();
-
-    return {
-      statusCode: HttpStatus.OK,
-      error: false,
-      message: 'Order updated successfully',
-      data: existingOrder,
-    };
   }
+
+  await existingOrder.save();
+
+  return {
+    statusCode: HttpStatus.OK,
+    error: false,
+    message: 'Order updated successfully',
+    data: existingOrder,
+  };
+}
+
 
   async findByUserId(userId: string): Promise<any> {
     try {
