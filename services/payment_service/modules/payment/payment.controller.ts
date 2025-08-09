@@ -38,4 +38,16 @@ export class PaymentController {
             );
         }
     }
+
+     @Get('all')
+    async getAllPayments() {
+        try {
+            return await this.paymentService.getAllPayments();
+        } catch (err) {
+            throw new HttpException(
+                { error: true, message: err.message || 'Failed to fetch payments' },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
 }

@@ -142,4 +142,20 @@ export class PaymentService {
             currency: 'INR',
         };
     }
+
+     async getAllPayments() {
+        try {
+            const payments = await Payment.findAll({
+                order: [['createdAt', 'DESC']],
+            });
+            return {
+                success: true,
+                count: payments.length,
+                data: payments,
+            };
+        } catch (err) {
+            this.logger.error('Failed to fetch all payments', err);
+            throw new Error('Unable to fetch payment records');
+        }
+    }
 }
