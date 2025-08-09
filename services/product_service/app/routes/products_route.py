@@ -11,12 +11,12 @@ from uuid import UUID
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional
 from bson import ObjectId
+from app.kafka.kafka_producer import send_event
 router = APIRouter(prefix="/product")
 
 DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
 
 # ======= EXISTING ENDPOINTS =======
-
 @router.post("/sync/digikey")
 async def sync_digikey_product(payload: dict):
     query = payload.get("query")
@@ -24,12 +24,12 @@ async def sync_digikey_product(payload: dict):
         raise HTTPException(status_code=400, detail={"status": "failure", "message": "Query is required"})
 
     async with httpx.AsyncClient(timeout=30) as client:
-        # 1️⃣ Search API
+        # Search API
         search_url = f"{DIGIKEY_BASE_URL}/search/keyword"
         search_resp = await client.post(search_url, json={"query": query})
         if search_resp.status_code != 200:
             raise HTTPException(status_code=500, detail={"status": "failure", "message": "Search API failed"})
-        
+
         search_data = search_resp.json()
         if not search_data.get("success") or not search_data.get("products"):
             raise HTTPException(status_code=404, detail={"status": "failure", "message": "Product not found in search"})
@@ -37,7 +37,12 @@ async def sync_digikey_product(payload: dict):
         product_basic = search_data["products"][0]
         digi_part_number = product_basic["digiKeyPartNumber"]
 
-        # 2️⃣ Product details API
+        # Check if product already exists in DB
+        existing = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == f"SPNID-{product_basic.get('manufacturerPartNumber', '')}")
+        if existing:
+            return {"status": "success", "message": f"Product {query} already synced"}
+
+        # Product details API
         details_url = f"{DIGIKEY_BASE_URL}/products/{digi_part_number}/productdetails"
         details_resp = await client.get(details_url)
         if details_resp.status_code != 200:
@@ -47,11 +52,8 @@ async def sync_digikey_product(payload: dict):
         if not details_data.get("success"):
             raise HTTPException(status_code=500, detail={"status": "failure", "message": "Invalid product details response"})
 
-    # 3️⃣ Merge data (priority to details)
     merged_data = {**product_basic, **details_data["product"]}
     print(f"Merged Data: {merged_data}")
-
-    # 4️⃣ Store in DB
     await fetch_and_sync_semicon_product(merged_data)
 
     return {"status": "success", "message": f"Product {query} synced successfully"}
@@ -113,7 +115,7 @@ async def get_all_products(
                     "image_url": doc.get("image_url"),
                     "datasheet_url": doc.get("datasheet_url"),
                     "quantity_available": doc.get("quantity_available"),
-                    "unit_price": doc.get("unit_price"),
+                    "unit_price": doc.get("UnitPrice"),
                     "currency": doc.get("currency"),
                     "manufacturerPartNumber": doc.get("manufacturerPartNumber"),
                     "vendor_details": doc.get("vendor_details", []),
@@ -160,136 +162,188 @@ async def get_product_by_id(product_id: str):
         
         # Aggregation pipeline adapted from renderProductFrame
         aggregation_pipeline = [
-            {"$match": {"semicon_part_number": product.semicon_part_number}},
-            {
-                "$lookup": {
-                    "from": "semicon_product_details",
-                    "localField": "semicon_part_number",
-                    "foreignField": "semicon_part_number",
-                    "as": "product_details"
-                }
+    {"$match": {"semicon_part_number": product.semicon_part_number}},
+
+    # Lookup product details
+    {
+        "$lookup": {
+            "from": "semicon_product_details",
+            "localField": "semicon_part_number",
+            "foreignField": "semicon_part_number",
+            "as": "product_details"
+        }
+    },
+
+    # Lookup vendor products matching vendor_details
+    {
+        "$lookup": {
+            "from": "vendor_products",
+            "let": {"vendor_ids": "$vendor_details"},
+            "pipeline": [
+                {"$match": {"$expr": {"$in": ["$vendor_product_number", "$$vendor_ids"]}}}
+            ],
+            "as": "vendor_products"
+        }
+    },
+
+    # For each vendor product, lookup full product variants documents
+    {
+        "$unwind": {
+            "path": "$vendor_products",
+            "preserveNullAndEmptyArrays": True
+        }
+    },
+
+    {
+        "$lookup": {
+            "from": "product_variants",
+            "localField": "vendor_products.product_variants",
+            "foreignField": "semicon_product_variant_id",
+            "as": "vendor_products.full_variants"
+        }
+    },
+
+    # For each variant, lookup pricing and parameters
+    {
+        "$unwind": {
+            "path": "$vendor_products.full_variants",
+            "preserveNullAndEmptyArrays": True
+        }
+    },
+
+    {
+        "$lookup": {
+            "from": "variant_pricing",
+            "localField": "vendor_products.full_variants.semicon_product_variant_pricing_id",
+            "foreignField": "semicon_product_variant_pricing_id",
+            "as": "vendor_products.full_variants.pricing_details"
+        }
+    },
+
+    {
+        "$lookup": {
+            "from": "vendors_product_variant_parameters",
+            "localField": "vendor_products.full_variants.semicon_product_variant_id",
+            "foreignField": "semicon_parameter_id",
+            "as": "vendor_products.full_variants.parameters"
+        }
+    },
+
+    # Merge pricing details as single object (first element)
+    {
+        "$addFields": {
+            "vendor_products.full_variants.pricing_details": {
+                "$arrayElemAt": ["$vendor_products.full_variants.pricing_details", 0]
+            }
+        }
+    },
+
+    # Group back variants into array under each vendor_product
+    {
+        "$group": {
+            "_id": {
+                "product_id": "$_id",
+                "vendor_product_id": "$vendor_products._id"
             },
-            {
-                "$lookup": {
-                    "from": "vendor_products",
-                    "localField": "semicon_part_number",
-                    "foreignField": "semicon_part_number",
-                    "as": "vendor_products"
-                }
+            "vendor_product": {"$first": "$vendor_products"},
+            "variants": {"$push": "$vendor_products.full_variants"},
+            "product_root": {"$first": "$$ROOT"}
+        }
+    },
+
+    {
+        "$addFields": {
+            "vendor_product.product_variants": "$variants"
+        }
+    },
+
+    # Group back vendor_products into array under the product
+    {
+        "$group": {
+            "_id": "$_id.product_id",
+            "vendor_products": {"$push": "$vendor_product"},
+            "product_root": {"$first": "$product_root"}
+        }
+    },
+
+    # Replace root document, but with vendor_products replaced with fully populated ones
+    {
+        "$replaceRoot": {
+            "newRoot": {
+                "$mergeObjects": [
+                    "$product_root",
+                    {"vendor_products": "$vendor_products"}
+                ]
+            }
+        }
+    },
+
+    # Final grouping and projection (your original)
+    {
+        "$group": {
+            "_id": "$_id",
+            "semicon_part_number": {"$first": "$semicon_part_number"},
+            "name": {"$first": "$name"},
+            "description": {"$first": "$description"},
+            "image_url": {"$first": "$image_url"},
+            "datasheet_url": {"$first": "$datasheet_url"},
+            "quantity_available": {"$first": "$quantity_available"},
+            "unit_price": {"$first": "$unit_price"},
+            "currency": {"$first": "$currency"},
+            "status": {"$first": "$status"},
+            "created_by": {"$first": "$created_by"},
+            "created_date": {"$first": "$created_date"},
+            "modified_by": {"$first": "$modified_by"},
+            "modified_date": {"$first": "$modified_date"},
+            "product_details": {"$first": "$product_details"},
+            "vendor_products": {"$first": "$vendor_products"}
+        }
+    },
+
+    {
+        "$project": {
+            "semicon_part_number": 1,
+            "name": 1,
+            "image_url": 1,
+            "datasheet_url": 1,
+            "quantity_available": 1,
+            "unit_price": 1,
+            "currency": 1,
+            "status": 1,
+            "created_by": 1,
+            "created_date": 1,
+            "modified_by": 1,
+            "modified_date": 1,
+            "Category": {"$ifNull": [{"$arrayElemAt": ["$product_details.Category", 0]}, None]},
+            "Description": {
+                "ProductDescription": "$description",
+                "DetailedDescription": {"$ifNull": [{"$arrayElemAt": ["$product_details.DetailedDescription", 0]}, None]}
             },
-            {"$unwind": {"path": "$vendor_products", "preserveNullAndEmptyArrays": True}},
-            {"$unwind": {"path": "$vendor_products.product_variants", "preserveNullAndEmptyArrays": True}},
-            {
-                "$lookup": {
-                    "from": "product_variants",
-                    "localField": "vendor_products.product_variants",
-                    "foreignField": "semiocon_product_variant_id",
-                    "as": "product_variants"
-                }
+            "Manufacturer": {
+                "Name": {"$ifNull": [{"$arrayElemAt": ["$product_details.Manufacturer.Name", 0]}, None]},
+                "PartNumber": {"$ifNull": [{"$arrayElemAt": ["$product_details.manufacturerPartNumber", 0]}, None]}
             },
-            {"$unwind": {"path": "$product_variants", "preserveNullAndEmptyArrays": True}},
-            {
-                "$lookup": {
-                    "from": "variant_pricing",
-                    "localField": "product_variants.semicon_product_variant_pricing_id",
-                    "foreignField": "semicon_product_variant_pricing_id",
-                    "as": "product_variants.pricing_details"
-                }
+            "ProductDetails": {
+                "UnitPrice": {"$ifNull": [{"$arrayElemAt": ["$product_details.UnitPrice", 0]}, None]},
+                "ProductUrl": {"$ifNull": [{"$arrayElemAt": ["$product_details.ProductUrl", 0]}, None]},
+                "BackOrderNotAllowed": {"$ifNull": [{"$arrayElemAt": ["$product_details.BackOrderNotAllowed", 0]}, None]},
+                "NormallyStocking": {"$ifNull": [{"$arrayElemAt": ["$product_details.NormallyStocking", 0]}, None]},
+                "Discontinued": {"$ifNull": [{"$arrayElemAt": ["$product_details.Discontinued", 0]}, None]},
+                "EndOfLife": {"$ifNull": [{"$arrayElemAt": ["$product_details.EndOfLife", 0]}, None]},
+                "Ncnr": {"$ifNull": [{"$arrayElemAt": ["$product_details.Ncnr", 0]}, None]},
+                "ManufacturerLeadWeeks": {"$ifNull": [{"$arrayElemAt": ["$product_details.ManufacturerLeadWeeks", 0]}, None]},
+                "Series": {"$ifNull": [{"$arrayElemAt": ["$product_details.Series", 0]}, None]},
+                "Classifications": {"$ifNull": [{"$arrayElemAt": ["$product_details.Classifications", 0]}, None]},
+                "OtherNames": {"$ifNull": [{"$arrayElemAt": ["$product_details.OtherNames", 0]}, []]},
+                "ProductStatus": {"$ifNull": [{"$arrayElemAt": ["$product_details.ProductStatus", 0]}, None]}
             },
-            {
-                "$lookup": {
-                    "from": "vendors_product_variant_parameters",
-                    "localField": "product_variants.semiocon_product_variant_id",
-                    "foreignField": "semicon_parameter_id",
-                    "as": "product_variants.parameters"
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$_id",
-                    "semicon_part_number": {"$first": "$semicon_part_number"},
-                    "name": {"$first": "$name"},
-                    "description": {"$first": "$description"},
-                    "image_url": {"$first": "$image_url"},
-                    "datasheet_url": {"$first": "$datasheet_url"},
-                    "quantity_available": {"$first": "$quantity_available"},
-                    "unit_price": {"$first": "$unit_price"},
-                    "currency": {"$first": "$currency"},
-                    "status": {"$first": "$status"},
-                    "created_by": {"$first": "$created_by"},
-                    "created_date": {"$first": "$created_date"},
-                    "modified_by": {"$first": "$modified_by"},
-                    "modified_date": {"$first": "$modified_date"},
-                    "product_details": {"$first": "$product_details"},
-                    "vendor_products": {
-                        "$addToSet": {
-                            "_id": "$vendor_products._id",
-                            "vendor_name": "$vendor_products.vendor_name",
-                            "vendor_product_number": "$vendor_products.vendor_product_number",
-                            "created_by": "$vendor_products.created_by",
-                            "created_date": "$vendor_products.created_date",
-                            "modified_by": "$vendor_products.modified_by",
-                            "modified_date": "$vendor_products.modified_date",
-                            "status": "$vendor_products.status",
-                            "product_variants": "$vendor_products.product_variants"
-                        }
-                    },
-                    "product_variants": {
-                        "$addToSet": {
-                            "$mergeObjects": [
-                                "$product_variants",
-                                {
-                                    "pricing_details": {"$arrayElemAt": ["$product_variants.pricing_details", 0]},
-                                    "parameters": "$product_variants.parameters"
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                "$project": {
-                    "semicon_part_number": 1,
-                    "name": 1,
-                    "image_url": 1,
-                    "datasheet_url": 1,
-                    "quantity_available": 1,
-                    "unit_price": 1,
-                    "currency": 1,
-                    "status": 1,
-                    "created_by": 1,
-                    "created_date": 1,
-                    "modified_by": 1,
-                    "modified_date": 1,
-                    "Category": {"$ifNull": [{"$arrayElemAt": ["$product_details.Category", 0]}, None]},
-                    "Description": {
-                        "ProductDescription": "$description",
-                        "DetailedDescription": {"$ifNull": [{"$arrayElemAt": ["$product_details.DetailedDescription", 0]}, None]}
-                    },
-                    "Manufacturer": {
-                        "Name": {"$ifNull": [{"$arrayElemAt": ["$product_details.Manufacturer.Name", 0]}, None]},
-                        "PartNumber": {"$ifNull": [{"$arrayElemAt": ["$product_details.manufacturerPartNumber", 0]}, None]}
-                    },
-                    "ProductDetails": {
-                        "UnitPrice": {"$ifNull": [{"$arrayElemAt": ["$product_details.UnitPrice", 0]}, None]},
-                        "ProductUrl": {"$ifNull": [{"$arrayElemAt": ["$product_details.ProductUrl", 0]}, None]},
-                        "BackOrderNotAllowed": {"$ifNull": [{"$arrayElemAt": ["$product_details.BackOrderNotAllowed", 0]}, None]},
-                        "NormallyStocking": {"$ifNull": [{"$arrayElemAt": ["$product_details.NormallyStocking", 0]}, None]},
-                        "Discontinued": {"$ifNull": [{"$arrayElemAt": ["$product_details.Discontinued", 0]}, None]},
-                        "EndOfLife": {"$ifNull": [{"$arrayElemAt": ["$product_details.EndOfLife", 0]}, None]},
-                        "Ncnr": {"$ifNull": [{"$arrayElemAt": ["$product_details.Ncnr", 0]}, None]},
-                        "ManufacturerLeadWeeks": {"$ifNull": [{"$arrayElemAt": ["$product_details.ManufacturerLeadWeeks", 0]}, None]},
-                        "Series": {"$ifNull": [{"$arrayElemAt": ["$product_details.Series", 0]}, None]},
-                        "Classifications": {"$ifNull": [{"$arrayElemAt": ["$product_details.Classifications", 0]}, None]},
-                        "OtherNames": {"$ifNull": [{"$arrayElemAt": ["$product_details.OtherNames", 0]}, []]},
-                        "ProductStatus": {"$ifNull": [{"$arrayElemAt": ["$product_details.ProductStatus", 0]}, None]}
-                    },
-                    "VendorProducts": "$vendor_products",
-                    "ProductVariants": "$product_variants"
-                }
-            },
-            {"$limit": 1}
-        ]
+            "VendorProducts": 1
+        }
+    },
+
+    {"$limit": 1}
+]
+
 
         # Execute the aggregation using existing engine
         product_details = await collection.aggregate(aggregation_pipeline).to_list(length=1)
@@ -330,9 +384,15 @@ async def get_product_by_id(product_id: str):
 
         # Format response
         details = product_details[0]
-        vendor_products = [vp for vp in details.get("vendor_products", []) if vp.get("_id")]
-        product_variants = details.get("product_variants", []) if details.get("product_variants") else []
 
+# Get existing vendor_products, default empty list
+        vendor_products = details.get("vendor_products", [])
+
+        # Flatten product_variants across vendor_products; default empty if none
+        product_variants = [variant for vp in vendor_products for variant in vp.get("product_variants") or []]
+
+        # Prepare detailed_info preserving all existing keys and values
+        print(f"Detailed Info: {vendor_products, product_variants}")
         return {
             "error": False,
             "message": "Product retrieved successfully",
@@ -367,8 +427,8 @@ async def get_product_by_id(product_id: str):
                         "OtherNames": details["ProductDetails"]["OtherNames"] or [],
                         "ProductStatus": details["ProductDetails"]["ProductStatus"]
                     },
-                    "VendorProducts": vendor_products,
-                    "ProductVariants": product_variants
+                     "VendorProducts": details.get("VendorProducts", []),
+                         "ProductVariants": details.get("ProductVariants", [])
                 }
             }
         }
@@ -519,7 +579,7 @@ async def check_product_availability(product_id: str, quantity: int = Path(..., 
                     "manufacturer_part_number": product.manufacturerPartNumber,
                     "manufacturer_name": product.manufacturer_name,
                     "quantity_available": product.quantity_available,
-                    "unit_price": product.unit_price,
+                    "unit_price": product.UnitPrice,
                     "currency": product.currency,
                     "description": product.description,
                     "image_url": product.image_url,
