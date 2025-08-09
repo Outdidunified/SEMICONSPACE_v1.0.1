@@ -8,8 +8,6 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Op, fn, col, literal, Sequelize } from 'sequelize'; // Top of the file
 import { ManagerOrder } from './managerorder.model';
 import { UpdateManagerOrderDto } from './dto/update-managerorder.dto';
-import axios from 'axios';
-// This service handles order management operations, including fetching and updating orders.
 
 @Injectable()
 export class ManagerOrderService {
@@ -27,33 +25,12 @@ export class ManagerOrderService {
     if (!uuidRegex.test(uuid)) {
       throw new HttpException(
         {
-          statusCode: 400,
+          statusCode: HttpStatus.BAD_REQUEST,
           error: true,
           message: `Invalid ${label}`,
         },
-        400,
+        HttpStatus.BAD_REQUEST,
       );
-    }
-  }
-
-  private async fetchUserProfile(userId: string) {
-    try {
-      const profileRes = await axios.post(
-        `http://172.232.110.10:8002/user/profile/get`,
-        { userId },
-      );
-      const profile = profileRes.data?.profile;
-      if (!profile) return null;
-
-      return {
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        email: profile.email,
-        phone: profile.phone,
-      };
-    } catch (err) {
-      this.logger.warn(`Unable to fetch profile for user ${userId}: ${err.message}`);
-      return null;
     }
   }
 
@@ -71,18 +48,11 @@ export class ManagerOrderService {
       );
     }
 
-    const enriched = await Promise.all(
-      data.map(async (order) => ({
-        ...order.toJSON(),
-        userProfile: await this.fetchUserProfile(order.userId),
-      })),
-    );
-
     return {
       statusCode: HttpStatus.OK,
       error: false,
       message: 'Orders fetched successfully',
-      data: enriched,
+      data: data.map(order => order.toJSON()),
     };
   }
 
@@ -93,82 +63,82 @@ export class ManagerOrderService {
     if (!order) {
       throw new HttpException(
         {
-          statusCode: 404,
+          statusCode: HttpStatus.NOT_FOUND,
           error: true,
           message: 'Order not found',
         },
-        404,
+        HttpStatus.NOT_FOUND,
       );
     }
 
-    const userProfile = await this.fetchUserProfile(order.userId);
-
     return {
-      statusCode: 200,
+      statusCode: HttpStatus.OK,
       error: false,
       message: 'Order fetched successfully',
-      data: {
-        ...order.toJSON(),
-        userProfile,
-      },
+      data: order.toJSON(),
     };
   }
 
- async update(orderId: string, dto: UpdateManagerOrderDto): Promise<any> {
-  this.validateUUID(orderId, 'Order ID');
+  async update(orderId: string, dto: UpdateManagerOrderDto): Promise<any> {
+    this.validateUUID(orderId, 'Order ID');
 
-  const existingOrder = await this.orderModel.findByPk(orderId);
-  if (!existingOrder) {
-    throw new HttpException({ statusCode: 404, error: true, message: 'Order not found' }, 404);
-  }
-
-  const now = new Date();
-
-  // ✅ Automatically track time when status is updated
-  switch (dto.status) {
-    case 'shipped':
-      existingOrder.shippedAt = now;
-      break;
-    case 'out for delivery':
-    case 'out-for-delivery':
-      existingOrder.outForDeliveryAt = now;
-      break;
-    case 'delivered':
-      existingOrder.deliveredAt = now;
-      break;
-  }
-
-  if (dto.status) existingOrder.status = dto.status;
-  if (dto.totalAmount) existingOrder.total = dto.totalAmount;
-  if (dto.deliveryAddress) {
-    try {
-      existingOrder.deliveryAddress = JSON.parse(dto.deliveryAddress);
-    } catch {
-      throw new HttpException({ statusCode: 400, error: true, message: 'Invalid address format' }, 400);
+    const existingOrder = await this.orderModel.findByPk(orderId);
+    if (!existingOrder) {
+      throw new HttpException(
+        { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'Order not found' },
+        HttpStatus.NOT_FOUND,
+      );
     }
+
+    const now = new Date();
+
+    switch (dto.status?.toLowerCase()) {
+      case 'shipped':
+        existingOrder.shippedAt = now;
+        break;
+      case 'out for delivery':
+      case 'out-for-delivery':
+        existingOrder.outForDeliveryAt = now;
+        break;
+      case 'delivered':
+        existingOrder.deliveredAt = now;
+        break;
+    }
+
+    if (dto.status) existingOrder.status = dto.status;
+    if (dto.totalAmount !== undefined) existingOrder.total = dto.totalAmount;
+
+    if (dto.deliveryAddress) {
+      try {
+        existingOrder.billingDetails = JSON.parse(dto.deliveryAddress);
+      } catch {
+        throw new HttpException(
+          { statusCode: HttpStatus.BAD_REQUEST, error: true, message: 'Invalid address format' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    await existingOrder.save();
+
+    return {
+      statusCode: HttpStatus.OK,
+      error: false,
+      message: 'Order updated successfully',
+      data: existingOrder,
+    };
   }
-
-  await existingOrder.save();
-
-  return {
-    statusCode: 200,
-    error: false,
-    message: 'Order updated successfully',
-    data: existingOrder,
-  };
-}
-
 
   async findByUserId(userId: string): Promise<any> {
     try {
       if (!userId) {
         throw new HttpException(
           {
-            statusCode: 400,
+            statusCode: HttpStatus.BAD_REQUEST,
             error: true,
             message: 'User ID is required',
           },
-          400,
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -178,30 +148,23 @@ export class ManagerOrderService {
 
       if (!orders || orders.length === 0) {
         return {
-          statusCode: 404,
+          statusCode: HttpStatus.NOT_FOUND,
           error: true,
           message: `No orders found for user ID ${userId}`,
         };
       }
 
-      const userProfile = await this.fetchUserProfile(userId);
-
-      const enriched = orders.map((order) => ({
-        ...order.toJSON(),
-        userProfile,
-      }));
-
       return {
-        statusCode: 200,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Orders fetched successfully',
-        data: enriched,
+        data: orders.map(order => order.toJSON()),
       };
     } catch (error) {
-      this.logger.error(' Error in findByUserId:', error);
+      this.logger.error('Error in findByUserId:', error);
 
       return {
-        statusCode: error?.status || 500,
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
         message: error?.message || 'Unexpected error while fetching orders',
       };
