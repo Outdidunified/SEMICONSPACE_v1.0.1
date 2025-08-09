@@ -6,34 +6,37 @@ import {
   PrimaryKey,
 } from 'sequelize-typescript';
 
-@Table({ tableName: 'Order', timestamps: true })
+@Table({
+  tableName: 'Order', // Your actual table name with quotes in DB
+  timestamps: true,   // createdAt & updatedAt handled automatically
+})
 export class ManagerOrder extends Model<ManagerOrder> {
- @Column({ type: DataType.UUID, primaryKey: true, defaultValue: DataType.UUIDV4 })
+  @PrimaryKey
+  @Column({ type: DataType.UUID, field: 'orderId', defaultValue: DataType.UUIDV4 })
   orderId!: string;
 
-  @Column({ type: DataType.UUID, allowNull: false })
+  @Column({ type: DataType.UUID, allowNull: false, field: 'userId' })
   userId!: string;
 
-  // Items with productId as string, including name, qty, price, totalPrice
-  @Column(DataType.JSONB)
+  @Column({ type: DataType.JSONB, field: 'items' })
   items!: Array<{ productId: string; name: string; qty: number; price: number; totalPrice: number }>;
 
-  @Column(DataType.FLOAT)
+  @Column({ type: DataType.DOUBLE, field: 'subtotal' })
   subtotal!: number;
 
-  @Column(DataType.FLOAT)
+  @Column({ type: DataType.DOUBLE, field: 'gstAmount' })
   gstAmount!: number;
 
-  @Column(DataType.FLOAT)
+  @Column({ type: DataType.DOUBLE, field: 'shippingCharge' })
   shippingCharge!: number;
 
-  @Column(DataType.FLOAT)
+  @Column({ type: DataType.DOUBLE, field: 'total' })
   total!: number;
 
-  @Column({ type: DataType.STRING, defaultValue: 'pending' })
+  @Column({ type: DataType.STRING, field: 'status', defaultValue: 'pending' })
   status!: string;
 
-  @Column(DataType.JSONB)
+  @Column({ type: DataType.JSONB, field: 'billingDetails' })
   billingDetails!: {
     first_name: string;
     last_name: string;
@@ -46,10 +49,10 @@ export class ManagerOrder extends Model<ManagerOrder> {
     pin: string;
   };
 
-  @Column(DataType.STRING)
+  @Column({ type: DataType.STRING, field: 'razorpayOrderId' })
   razorpayOrderId!: string;
 
-  @Column(DataType.STRING)
+  @Column({ type: DataType.STRING, field: 'razorpayPaymentId' })
   razorpayPaymentId!: string;
 
   @Column({ type: DataType.DATE, field: 'confirmedat', allowNull: true })
@@ -64,13 +67,9 @@ export class ManagerOrder extends Model<ManagerOrder> {
   @Column({ type: DataType.DATE, field: 'deliveredat', allowNull: true })
   deliveredAt?: Date;
 
-  // createdAt and updatedAt will be handled automatically by Sequelize because timestamps: true
-  // but if your DB columns are snake_case, map them explicitly:
+  @Column({ type: DataType.DATE, field: 'createdAt' })
+  createdAt!: Date;
 
- @Column({ type: DataType.DATE, field: 'createdAt' })
-createdAt!: Date;
-
-@Column({ type: DataType.DATE, field: 'updatedAt' })
-updatedAt!: Date;
-
+  @Column({ type: DataType.DATE, field: 'updatedAt' })
+  updatedAt!: Date;
 }
