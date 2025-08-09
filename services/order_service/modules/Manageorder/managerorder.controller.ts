@@ -6,7 +6,7 @@ import { UpdateManagerOrderDto } from './dto/update-managerorder.dto';
 export class ManagerOrderController {
   constructor(private readonly orderService: ManagerOrderService) {}
 
-  @Get('manager')
+  @Get('allorders')
   getAllOrders() {
     return this.orderService.findAll();
   }
