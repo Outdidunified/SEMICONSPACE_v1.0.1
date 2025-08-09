@@ -1,20 +1,22 @@
+from __future__ import annotations
 from odmantic import Model, Field
-from uuid import UUID, uuid4
-from datetime import datetime, timezone
+from datetime import datetime
+from bson import ObjectId
+import uuid
+from typing import Optional, Union
 
+class SemiconManufacturer(Model):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_field=True)
+    semicon_manufacturer_id: Optional[str] = Field(default=None)
+    digikey_manufacturer_id: Optional[int] = Field(default=None)
+    digikey_name: Optional[str] = Field(default=None)
+    created_by: Optional[str] = Field(default="system")
+    modified_by: Optional[str] = Field(default="system")
+    created_date: datetime = Field(default_factory=datetime.utcnow)
+    modified_date: datetime = Field(default_factory=datetime.utcnow)
+    status: Union[bool, str] = Field(default=True)
 
-class Manufacturer(Model):
-    id: UUID = Field(primary_field=True, default_factory=uuid4)
-    manufacturer_id: int
-    name: str
-    created_by: str
-    created_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    modified_by: str
-    modified_date: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    status: bool
+    model_config = {
+        "collection": "manufacturers"
+    }
 
-    model_config = {"collection": "manufacturers"}

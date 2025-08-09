@@ -6,17 +6,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 import logging
-
+from fastapi.staticfiles import StaticFiles
 from app.database import client
-from app.kafka.kafka_producer import start_kafka, stop_kafka
-from app.kafka.kafka_consumer import start_consumer
+#from app.job.digikey import save_digikey_product_to_db
+#from app.kafka.kafka_producer import start_kafka, stop_kafka
+#from app.kafka.kafka_consumer import start_consumer
 
 # Routers
 from app.routes.products_route import router as products_router
 from app.routes.categories_route import router as categories_router
-from app.routes.pricing_route import router as pricing_router
-from app.routes.specification_route import router as specification_route
-from app.routes.manfature_route import router as manufacturer_route
+# from app.routes.pricing_route import router as pricing_router
+# from app.routes.specification_route import router as specification_route
+from app.routes.manufacturer_route import router as manufacturer_route
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ async def lifespan(app: FastAPI):
 
     while True:
         try:
-            await start_kafka()
+           # await start_kafka()
             logger.info("✅ Kafka producer started")
             break
         except Exception:
@@ -44,16 +45,18 @@ async def lifespan(app: FastAPI):
             logger.warning("⏳ MongoDB not ready, retrying in 3s...", exc_info=True)
             await asyncio.sleep(3)
 
-    consumer_task = asyncio.create_task(start_consumer())
+    #consumer_task = asyncio.create_task(start_consumer())
     logger.info("🎧 Kafka consumer task launched")
+    
+    #await save_digikey_product_to_db()
 
     yield
 
-    
-    consumer_task.cancel()
+   
+    #consumer_task.cancel()
     logger.info("🛑 Kafka consumer task cancelled")
 
-    await stop_kafka()
+    #await stop_kafka()
     logger.info("✅ Kafka producer stopped")
 
 
@@ -68,7 +71,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(
@@ -104,9 +107,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
             "message": "Internal Server Error"
         }
     )
-
-app.include_router(products_router, prefix="/product", tags=["Products"])
+app.include_router(products_router)
 app.include_router(categories_router)
-app.include_router(pricing_router)
-app.include_router(specification_route)
+# app.include_router(pricing_router)
+# app.include_router(specification_route)
 app.include_router(manufacturer_route)

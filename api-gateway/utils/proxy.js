@@ -3,7 +3,8 @@ const { loggerDebug, loggerError, loggerSuccess, loggerWarn, loggerInfo } = requ
 
 function createServiceProxy(target, match, authHeader) {
     return proxy(target, {
-        timeout: 30000, // Increased timeout to 30 seconds
+        timeout: 180000, // Fixed: Use direct number instead of function - 2 minutes for large data
+        limit: '50mb', // Increase body size limit
         proxyReqPathResolver: (req) => req.originalUrl.replace(/^\/api/, ''),
         proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
             const correlationId =
@@ -34,27 +35,44 @@ function createServiceProxy(target, match, authHeader) {
             } else if (status >= 400 && status < 500) {
                 loggerWarn(`CLIENT ERROR - ${logMessage}`);
             } else if (status >= 500) {
-                loggerError(` SERVER ERROR - ${logMessage}`);
+                loggerError(`SERVER ERROR - ${logMessage}`);
             } else {
                 loggerInfo(`INFO - ${logMessage}`);
             }
 
             return proxyResData;
         },
-
-
         proxyErrorHandler: (err, res, next) => {
             const clientIp = res.req.headers['x-forwarded-for'] || res.req.socket.remoteAddress;
             const fullUrl = `${target}${res.req.originalUrl.replace(/^\/api/, '')}`;
 
-            loggerError(`PROXY ERROR - Failed to reach [${fullUrl}] (Client: ${clientIp}) | Reason: ${err.message}`);
+            let errorType = 'PROXY ERROR';
+            let errorMessage = 'The service is temporarily unavailable';
+            let statusCode = 502;
+
+            if (err.code === 'ECONNRESET' || err.message.includes('socket hang up')) {
+                errorType = 'TIMEOUT ERROR';
+                errorMessage = 'Request timeout - service took too long to respond';
+                statusCode = 504;
+            } else if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+                errorType = 'CONNECTION ERROR';
+                errorMessage = 'Service is temporarily unavailable';
+                statusCode = 503;
+            } else if (err.message.includes('timeout')) {
+                errorType = 'TIMEOUT ERROR';
+                errorMessage = 'Request timeout - consider pagination for large datasets';
+                statusCode = 504;
+            }
+
+            loggerError(`${errorType} - Failed to reach [${fullUrl}] (Client: ${clientIp}) | Reason: ${err.message}`);
 
             if (!res.headersSent) {
-                res.status(502).json({
-                    error: 'Bad Gateway',
-                    message: 'The service is unavailable',
+                res.status(statusCode).json({
+                    error: errorType.replace(' ERROR', ''),
+                    message: errorMessage,
                     service: match,
                     target,
+                    timestamp: new Date().toISOString()
                 });
             }
         },

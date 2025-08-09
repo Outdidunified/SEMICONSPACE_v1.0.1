@@ -1,9 +1,15 @@
+
+
 // src/modules/address/dto/create.address.dto.ts
 import { IsString, IsBoolean, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateAddressDto {
   @IsUUID()
   userId: string;
+
+  @IsOptional()
+  @IsUUID()
+  addressId?: string;
 
   @IsOptional()
   @IsString()
@@ -22,6 +28,10 @@ export class CreateAddressDto {
   state?: string | null;
 
   @IsOptional()
+  @IsString()
+  country?: string | null;
+
+  @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 
@@ -29,8 +39,6 @@ export class CreateAddressDto {
   @IsString()
   modified_by?: string;
 
-  @IsOptional()
-@IsString()
-country?: string | null;
-
+  
 }
+

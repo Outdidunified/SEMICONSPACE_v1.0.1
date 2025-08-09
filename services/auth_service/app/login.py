@@ -75,6 +75,7 @@ async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(g
     if request.password != str(user.password):
         logger.warning(f"❌ Incorrect password attempt for user: {identifier}")
         raise HTTPException(status_code=401, detail="Incorrect password")
+     
 
     role_id_value = getattr(user, 'role_id', None)
     if role_id_value != 2:

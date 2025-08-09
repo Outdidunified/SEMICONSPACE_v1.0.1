@@ -1,183 +1,228 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional, Union
-from datetime import datetime, timezone
-import logging
-
-from app.models.categories_models import Category
-from app.schemas.categories_schema import (
-    CategorySchema, CategoryResponseSchema,
-    CategoryUpdateRequest, CategoryStatusToggleRequest
-)
+from fastapi import APIRouter, HTTPException, Query, status
+from app.services.sync_semicon_categories import fetch_and_sync_semicon_categories
+from app.schemas.categories_schema import SemiconCategoryCreateSchema, SemiconCategoryUpdateSchema
+from app.models.categories_models import SemiconCategory
 from app.database import engine
-from app.auth_utils import get_current_user
-from app.kafka.kafka_producer import send_event
+from typing import List, Optional
+from datetime import datetime
+from fastapi.encoders import jsonable_encoder
+from odmantic.query import QueryExpression
 
-router = APIRouter(tags=["Categories"], prefix="/product/category")
-logger = logging.getLogger("category_logger")
+router = APIRouter(prefix="/product")
 
-def success_response(data: Union[dict, list], message: Optional[str] = None):
-    response = {
-        "error" : "false",
-        "data": data
+# 🚀 Sync categories
+@router.get("/sync/categories", tags=["Sync"])
+async def sync_semicon_categories():
+    result = await fetch_and_sync_semicon_categories()
+    if result["status"] == "success":
+        return {
+            "error": False,
+            "message": f"Synced {result.get('saved_count', 0)} categories successfully",
+            "data": []
+        }
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": "Failed to sync categories",
+                "data": []
+            }
+        )
+
+def transform_category_doc(doc):
+    """Transform raw MongoDB document to standard API response format"""
+    def transform_child_category(child):
+        """Transform nested child category objects, excluding _id"""
+        return {
+            "semicon_child_category_id": child.get("semicon_child_category_id"),
+            "semicon_child_parent_id": child.get("semicon_child_parent_id"),
+            "digikey_child_category_id": child.get("digikey_child_category_id"),
+            "digikey_child_name": child.get("digikey_child_name"),
+            "digikey_parent_id": child.get("digikey_parent_id"),
+            "product_count": child.get("product_count", 0),
+            "created_by": child.get("created_by"),
+            "created_date": child.get("created_date"),
+            "modified_by": child.get("modified_by"),
+            "modified_date": child.get("modified_date"),
+            "status": child.get("status", True),
+            "child_categories": [transform_child_category(grandchild) for grandchild in child.get("child_categories", [])]
+        }
+    return {
+        "_id": str(doc["_id"]) if "_id" in doc else None,
+        "semicon_category_id": doc.get("semicon_category_id"),
+        "semicon_parent_id": doc.get("semicon_parent_id"),
+        "digikey_category_id": doc.get("digikey_category_id"),
+        "digikey_name": doc.get("digikey_name"),
+        "digikey_parent_id": doc.get("digikey_parent_id"),
+        "product_count": doc.get("product_count", 0),
+        "created_by": doc.get("created_by"),
+        "created_date": doc.get("created_date"),
+        "modified_by": doc.get("modified_by"),
+        "modified_date": doc.get("modified_date"),
+        "status": doc.get("status", True),
+        "child_categories": [transform_child_category(child) for child in doc.get("child_categories", [])]
     }
-    if message:
-        response["message"] = message
-    return response
-@router.get("/get/list")
-async def get_all_categories():
-    categories = await engine.find(Category)
-    logger.info("Fetched all active categories")
-    return success_response([category.model_dump() for category in categories])
-
-
-@router.get("/get/{category_id}")
-async def get_category_by_id(category_id: int):
-    category = await engine.find_one(Category, (Category.category_id == category_id))
-    if not category:
-        logger.warning(f"Category with ID {category_id} not found or inactive")
-        raise HTTPException(status_code=404, detail="Category not found")
-    logger.info(f"Fetched category with ID: {category_id}")
-    return success_response(category.model_dump())
-
-@router.post("/add")
-async def create_category(
-    category: CategorySchema, current_user: str = Depends(get_current_user)
-):
-    existing = await engine.find_one(Category, Category.category_id == category.category_id)
-    if existing:
-        logger.warning(f"Category with ID {category.category_id} already exists")
-        raise HTTPException(status_code=400, detail="Category with this ID already exists")
-
-    now = datetime.now(timezone.utc)
-    new_cat = Category(
-        **category.model_dump(),
-        created_by=current_user,
-        modified_by=current_user,
-        created_date=now,
-        modified_date=now,
-        #status=True
-    )
-    await engine.save(new_cat)
-    logger.info(f"New category created: {new_cat.category_name} by {current_user}")
-
+@router.get("/categories/all", tags=["Semicon Categories"])
+async def get_all_semicon_categories():
+    """Get all categories with standardized response format"""
     try:
-        await send_event("category.created", {
-            "category_id": new_cat.category_id,
-            "category_name": new_cat.category_name,
-            "created_by": current_user,
-            "created_date": new_cat.created_date.isoformat()
-        })
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconCategory)
+        categories = await collection.find().to_list(None)  # Fetch all documents
+
+        # Transform raw documents to the standardized format
+        cleaned_data = [transform_category_doc(doc) for doc in categories]
+        
+        return {
+            "error": False,
+            "message": "Categories fetched successfully",
+            "data": jsonable_encoder(cleaned_data)
+        }
     except Exception as e:
-        logger.error(f"Kafka error while sending category.created: {e}")
-
-    return success_response(new_cat.model_dump(), message="Category created successfully")
-
-
-@router.put("/update")
-async def update_category_by_body(
-    update_data: CategoryUpdateRequest,
-    current_user: str = Depends(get_current_user)
-):
-    category = await engine.find_one(Category, Category.category_id == update_data.category_id)
-    if not category:
-        logger.error(f"❌ Attempt to update non-existent category ID: {update_data.category_id}")
-        raise HTTPException(status_code=404, detail="Category not found")
-
-    # Extract only provided fields except category_id
-    update_fields = update_data.model_dump(exclude_unset=True, exclude={"category_id"})
-
-    # Only update status if it is explicitly provided
-    if "status" in update_fields:
-        category.status = update_fields.pop("status")
-
-    # Update remaining fields
-    for key, value in update_fields.items():
-        setattr(category, key, value)
-
-    category.modified_by = current_user
-    category.modified_date = datetime.now(timezone.utc)
-
-    await engine.save(category)
-
-    logger.info(f"✅ Category {category.category_id} updated by {current_user}")
-
+        print(f"Error fetching categories: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to fetch categories: {str(e)}",
+                "data": []
+            }
+        )
+@router.get("/categories/{category_id}", tags=["Semicon Categories"])
+async def get_category_by_id(category_id: str):
+    """Get a specific category by ID"""
     try:
-        await send_event("category.updated", {
-            "category_id": category.category_id,
-            "category_name": category.category_name,
-            "modified_by": current_user,
-            "modified_date": category.modified_date.isoformat()
-        })
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconCategory)
+        category = await collection.find_one({"semicon_category_id": category_id})
+        
+        if not category:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": True,
+                    "message": f"Category with ID {category_id} not found",
+                    "data": []
+                }
+            )
+        
+        # Transform the raw document to the standardized format
+        transformed_category = transform_category_doc(category)
+        
+        return {
+            "error": False,
+            "message": "Category fetched successfully",
+            "data": jsonable_encoder(transformed_category)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"⚠️ Kafka error while sending category.updated: {e}")
+        print(f"Error fetching category: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to fetch category: {str(e)}",
+                "data": []
+            }
+        )
 
-    return success_response(category.model_dump(), message=f"Category {update_data.category_id} updated successfully")
-
-# @router.put("/update")
-# async def update_category_by_body(
-#     update_data: CategoryUpdateRequest,
-#     current_user: str = Depends(get_current_user)
-# ):
-#     category = await engine.find_one(Category, Category.category_id == update_data.category_id)
-#     if not category:
-#         logger.error(f"❌ Attempt to update non-existent category ID: {update_data.category_id}")
-#         raise HTTPException(status_code=404, detail="Category not found")
-
-#     for key, value in update_data.model_dump(exclude={"category_id"}).items():
-#         if value is not None:
-#             setattr(category, key, value)
-
-#     category.modified_by = current_user
-#     category.modified_date = datetime.now(timezone.utc)
-
-#     await engine.save(category)
-
-#     logger.info(f"✅ Category {category.category_id} updated by {current_user}")
-
-#     try:
-#         await send_event("category.updated", {
-#             "category_id": category.category_id,
-#             "category_name": category.category_name,
-#             "modified_by": current_user,
-#             "modified_date": category.modified_date.isoformat()
-#         })
-#     except Exception as e:
-#         logger.error(f"⚠️ Kafka error while sending category.updated: {e}")
-
-#     return success_response(category.model_dump(), message=f"Category {update_data.category_id} updated successfully")
-
-
-# @router.post("/status")
-# async def toggle_category_status_by_body(
-#     request: CategoryStatusToggleRequest,
-#     current_user: str = Depends(get_current_user)
-# ):
-#     category = await engine.find_one(Category, Category.category_id == request.category_id)
-#     if not category:
-#         logger.error(f"❌ Attempt to toggle status of non-existent category ID: {request.category_id}")
-#         raise HTTPException(status_code=404, detail="Category not found")
-
-#     previous_status = category.status
-#     category.status = not previous_status
-#     category.modified_by = current_user
-#     category.modified_date = datetime.now(timezone.utc)
-
-#     await engine.save(category)
-
-#     logger.info(
-#         f"🔁 Category {request.category_id} status toggled from {previous_status} to {category.status} by {current_user}"
-#     )
-
-#     try:
-#         await send_event("category.activate_deactivate", {
-#             "action": "activate" if category.status else "deactivate",
-#             "category": category.model_dump(),
-#             "toggled_by": current_user,
-#         })
-#     except Exception as e:
-#         logger.error(f"⚠️ Kafka error while sending category.activate_deactivate: {e}")
-   
-#     return success_response(
-#     category.model_dump(),
-#     message=f"Category {request.category_id} {'activated' if category.status else 'deactivated'} successfully"
-#     )
+@router.get("/categories/child/{child_category_id}", tags=["Semicon Categories"])
+async def get_child_category_by_id(child_category_id: str):
+    """Get a specific child category by semicon_child_category_id"""
+    try:
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconCategory)
+        
+        # Search for child category across all parent categories
+        pipeline = [
+            {
+                "$unwind": "$child_categories"
+            },
+            {
+                "$match": {
+                    "child_categories.semicon_child_category_id": child_category_id
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "parent_category": {
+                        "semicon_category_id": "$semicon_category_id",
+                        "digikey_name": "$digikey_name"
+                    },
+                    "child_category": {
+                        "semicon_child_category_id": "$child_categories.semicon_child_category_id",
+                        "semicon_child_parent_id": "$child_categories.semicon_child_parent_id",
+                        "digikey_child_category_id": "$child_categories.digikey_child_category_id",
+                        "digikey_child_name": "$child_categories.digikey_child_name",
+                        "digikey_parent_id": "$child_categories.digikey_parent_id",
+                        "product_count": "$child_categories.product_count",
+                        "created_by": "$child_categories.created_by",
+                        "created_date": "$child_categories.created_date",
+                        "modified_by": "$child_categories.modified_by",
+                        "modified_date": "$child_categories.modified_date",
+                        "status": "$child_categories.status",
+                        "child_categories": "$child_categories.child_categories"
+                    }
+                }
+            }
+        ]
+        
+        cursor = collection.aggregate(pipeline)
+        result = await cursor.to_list(None)
+        
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": True,
+                    "message": f"Child category with ID {child_category_id} not found",
+                    "data": []
+                }
+            )
+        
+        # Transform the result to match the standard format
+        child_category_data = result[0]["child_category"]
+        parent_category_data = result[0]["parent_category"]
+        
+        # Transform nested child categories if any
+        if "child_categories" in child_category_data:
+            child_category_data["child_categories"] = [
+                {
+                    "semicon_child_category_id": grandchild.get("semicon_child_category_id"),
+                    "semicon_child_parent_id": grandchild.get("semicon_child_parent_id"),
+                    "digikey_child_category_id": grandchild.get("digikey_child_category_id"),
+                    "digikey_child_name": grandchild.get("digikey_child_name"),
+                    "digikey_parent_id": grandchild.get("digikey_parent_id"),
+                    "product_count": grandchild.get("product_count", 0),
+                    "created_by": grandchild.get("created_by"),
+                    "created_date": grandchild.get("created_date"),
+                    "modified_by": grandchild.get("modified_by"),
+                    "modified_date": grandchild.get("modified_date"),
+                    "status": grandchild.get("status", True)
+                }
+                for grandchild in child_category_data.get("child_categories", [])
+            ]
+        
+        return {
+            "error": False,
+            "message": "Child category fetched successfully",
+            "data": {
+                "parent_category": jsonable_encoder(parent_category_data),
+                "child_category": jsonable_encoder(child_category_data)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching child category: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to fetch child category: {str(e)}",
+                "data": []
+            }
+        )

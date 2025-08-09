@@ -29,6 +29,11 @@ update(@Body() dto: UpdateManageUserDto & { userId: string; modified_by: string 
   return this.userService.update(dto.userId, dto);
 }
 
+@Get('stats')
+getUserStats() {
+  return this.userService.getUserStats();
+}
+
 
   // @Post('status')
   // toggleStatus(@Body() body: { userId: string; status: boolean; modified_by: string }) {

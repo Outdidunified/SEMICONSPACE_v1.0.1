@@ -45,7 +45,6 @@ def create_token(data: dict) -> str:
     #expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     #to_encode["exp"] = expire
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
 @router.post("/auth/Admin_login", response_model=schemas.TokenResponse)
 async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
     logger = logging.getLogger(__name__)
@@ -73,23 +72,24 @@ async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(g
         logger.warning(f"❌ Login failed: {detail_msg} for identifier: {identifier}")
         raise HTTPException(status_code=404, detail=detail_msg)
 
-    # 🔄 Changed this line for plain-text comparison
+    # 🔒 Check password (securely hashed version preferred)
     if request.password != str(user.password):
         logger.warning(f"❌ Incorrect password attempt for user: {identifier}")
         raise HTTPException(status_code=401, detail="Incorrect password")
 
-    role_id_value = getattr(user, 'role_id', None)
-    if role_id_value != 1:
-        logger.warning(f"❌ Login attempt by unauthorized role: {identifier} (role_id: {role_id_value})")
-        raise HTTPException(status_code=403, detail="Invalid Admin")
+    # 🔒 Check if provided role_id matches user’s actual role_id
+    if request.role_id != user.role_id:
+        logger.warning(f"❌ Role mismatch: User role {user.role_id} != Provided {request.role_id}")
+        raise HTTPException(status_code=403, detail="Unauthorized access: role mismatch")
 
     token = create_token({
         "userId": str(user.userId),
         "role": user.role,
+        "role_id": user.role_id,
         "email": user.email
     })
 
-    logger.info(f"✅ User logged in successfully: {identifier}")
+    logger.info(f"✅ User logged in successfully: {identifier} (Role ID: {user.role_id})")
 
     try:
         await kafka_producer.send_event(
@@ -117,5 +117,5 @@ async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(g
         "email": user.email,
         "phone": user.phone,
         "first_name": user.first_name,
-        "last_name": user.last_name,
+        "last_name": user.last_name  # ✅ return frontend target page
     }

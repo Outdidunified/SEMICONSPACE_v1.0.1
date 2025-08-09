@@ -1,6 +1,8 @@
+// services/payment_service/modules/payment/payment.model.ts
+// This file defines the Payment model for the Payment Service, which interacts with the database to manage payment records.
 import { Table, Model, Column, DataType, CreatedAt } from 'sequelize-typescript';
 
-@Table({ tableName: 'payments', timestamps: true })
+@Table({ tableName: 'payment', timestamps: true })
 export class Payment extends Model {
   @Column({ type: DataType.UUID, primaryKey: true })
   orderId: string;
@@ -20,9 +22,11 @@ export class Payment extends Model {
   @Column(DataType.FLOAT)
   total: number;
 
-  @Column({ type: DataType.JSONB }) // use JSONB or TEXT depending on your DB
-items: any[];
+  @Column({ type: DataType.JSONB })
+  items: any[];
 
+  @Column({ type: DataType.STRING, allowNull: false, defaultValue: 'PrePaid' }) // add this
+  paymentType: string;
 
   @CreatedAt
   createdAt: Date;

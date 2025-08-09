@@ -1,276 +1,522 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
-from typing import List
-from datetime import datetime, timezone
-import logging
-
-from app.schemas.products_schema import (
-    ProductSchema,
-    ProductUpdateWithIDSchema,
-    ProductResponseSchema,
-    ProductIDRequest
-)
-from app.models.products_models import Product
-from app.models.categories_models import Category
-from app.models.manufacturers_models import Manufacturer
-from app.models.pricing_models import ProductPricing
+from fastapi import APIRouter, HTTPException, Query, Request, Path
+from typing import Optional, List
+import httpx
+import uuid
+from app.services.sync_semicon_products import fetch_and_sync_semicon_product
 from app.database import engine
-from app.kafka.kafka_producer import send_event
-from app.auth_utils import get_current_user
-from typing import Optional, Union
-from app.models.specifications_models import ProductSpecification
+from app.models.semicon_products import SemiconProduct
+from app.models.semicon_products_details import SemiconProduct as SemiconProductDetails
+from odmantic.query import QueryExpression
+from uuid import UUID
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import Optional
+from bson import ObjectId
+router = APIRouter(prefix="/product")
 
-router = APIRouter(tags=["Products"])
-logger = logging.getLogger(__name__)
-from typing import Union, Optional
-def success_response1(data: Union[dict, list], message: Optional[str] = None):
-    response = {
-        "status": "success",
-        "data": data
-    }
-    if message:
-        response["message"] = message
-    return response
-def success_response2(data: Union[dict, list], message: Optional[str] = None):
-    response = {
-        "error" : "false",
-        "data": data
-    }
-    if message:
-        response["message"] = message
-    return response
+DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
 
-@router.get("/list")
-async def list_products():
-    products = await engine.find(Product)
-    result = []
-    if not products:
-        logger.warning(f"❌ Products not found")
-        raise HTTPException(status_code=404, detail="Product not found")
+# ======= EXISTING ENDPOINTS =======
+
+@router.post("/sync/digikey")
+async def sync_digikey_product(payload: dict):
+    query = payload.get("query")
+    if not query:
+        raise HTTPException(status_code=400, detail={"status": "failure", "message": "Query is required"})
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        # 1️⃣ Search API
+        search_url = f"{DIGIKEY_BASE_URL}/search/keyword"
+        search_resp = await client.post(search_url, json={"query": query})
+        if search_resp.status_code != 200:
+            raise HTTPException(status_code=500, detail={"status": "failure", "message": "Search API failed"})
+        
+        search_data = search_resp.json()
+        if not search_data.get("success") or not search_data.get("products"):
+            raise HTTPException(status_code=404, detail={"status": "failure", "message": "Product not found in search"})
+
+        product_basic = search_data["products"][0]
+        digi_part_number = product_basic["digiKeyPartNumber"]
+
+        # 2️⃣ Product details API
+        details_url = f"{DIGIKEY_BASE_URL}/products/{digi_part_number}/productdetails"
+        details_resp = await client.get(details_url)
+        if details_resp.status_code != 200:
+            raise HTTPException(status_code=500, detail={"status": "failure", "message": "Product details API failed"})
+
+        details_data = details_resp.json()
+        if not details_data.get("success"):
+            raise HTTPException(status_code=500, detail={"status": "failure", "message": "Invalid product details response"})
+
+    # 3️⃣ Merge data (priority to details)
+    merged_data = {**product_basic, **details_data["product"]}
+    print(f"Merged Data: {merged_data}")
+
+    # 4️⃣ Store in DB
+    await fetch_and_sync_semicon_product(merged_data)
+
+    return {"status": "success", "message": f"Product {query} synced successfully"}
+
+
+@router.get("/fetchall")
+async def get_all_products(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    search: Optional[str] = Query(None, description="Search term for product name or part number"),
+    manufacturer: Optional[str] = Query(None, description="Filter by manufacturer name"),
+    category: Optional[str] = Query(None, description="Filter by category name")
+):
+    try:
+        # Log the query parameters
+        print(f"Fetching products with skip={skip}, limit={limit}, search={search}, manufacturer={manufacturer}, category={category}")
+
+        # Build query
+        query = QueryExpression()
+        if search:
+            query &= (
+                SemiconProduct.name.contains(search, case_sensitive=False) |
+                SemiconProduct.semicon_part_number.contains(search, case_sensitive=False) |
+                SemiconProduct.manufacturer_part_number.contains(search, case_sensitive=False)
+            )
+        if manufacturer:
+            query &= SemiconProduct.vendor_details.contains(manufacturer)
+        if category:
+            query &= SemiconProduct.semicon_category_id == category
+
+        # Try fetching with odmantic
+        products = await engine.find(SemiconProduct, query, skip=skip, limit=limit)
+        print(f"Found {len(products)} products using odmantic query")
+
+        # If no products found, try raw collection to diagnose
+        if not products:
+            collection = engine.get_collection(SemiconProduct)
+            raw_query = {}
+            if search:
+                raw_query["$or"] = [
+                    {"name": {"$regex": search, "$options": "i"}},
+                    {"semicon_part_number": {"$regex": search, "$options": "i"}},
+                    {"manufacturer_part_number": {"$regex": search, "$options": "i"}}
+                ]
+            if manufacturer:
+                raw_query["vendor_details"] = {"$regex": manufacturer, "$options": "i"}
+            if category:
+                raw_query["semicon_category_id"] = category
+
+            raw_products = await collection.find(raw_query).skip(skip).limit(limit).to_list(None)
+            print(f"Found {len(raw_products)} products using raw collection query")
+            if raw_products:
+                print("Products found in raw query but not in odmantic query, possible validation issue")
+                # Transform raw documents to match SemiconProduct structure
+                transformed_products = [{
+                    "id": str(doc["_id"]),
+                    "name": doc.get("name"),
+                    "description": doc.get("description"),
+                    "image_url": doc.get("image_url"),
+                    "datasheet_url": doc.get("datasheet_url"),
+                    "quantity_available": doc.get("quantity_available"),
+                    "unit_price": doc.get("unit_price"),
+                    "currency": doc.get("currency"),
+                    "manufacturerPartNumber": doc.get("manufacturerPartNumber"),
+                    "vendor_details": doc.get("vendor_details", []),
+                    "manufacturer_name": doc.get("manufacturer_name"),
+                    "semicon_part_number": doc.get("semicon_part_number"),
+                    "semicon_category_id": doc.get("semicon_category_id"),
+                    "semicon_child_category_id": doc.get("semicon_child_category_id"),
+                    "created_by": doc.get("created_by"),
+                    "created_date": doc.get("created_date"),
+                    "modified_by": doc.get("modified_by"),
+                    "modified_date": doc.get("modified_date"),
+                    "status": doc.get("status")
+                } for doc in raw_products]
+                return transformed_products
+
+        return {
+            "error": False,
+            "message": f"products fetched successfully",
+            "data": products,
+        }
+
+    except Exception as e:
+        print(f"Error fetching products: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
     
-    for product in products:
-        pricing = await engine.find_one(
-            ProductPricing,
-            (ProductPricing.product_id == product.product_id) & (ProductPricing.status == True),
-        )
 
-        specifications = await engine.find(
-            ProductSpecification,
-            ProductSpecification.product_id == product.product_id
-        )
+@router.get("/{product_id}/productdetails")
+async def get_product_by_id(product_id: str):
+    try:
+        # Check if product_id is a UUID or semicon_part_number
+        product = None
+        
+        # Try as UUID first
+        try:
+            product_uuid = UUID(product_id)
+            product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
+        except ValueError:
+            # If not UUID, try as semicon_part_number
+            product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
 
-        result.append({
-            "product": product,
-            "pricing": pricing,
-            "specifications": specifications
-        })
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
 
-    logger.info(f"✅ Listed {len(products)} products with pricing and specifications")
-    return success_response1(result)
+        # Get product details using the existing engine
+        collection = engine.get_collection(SemiconProduct)
+        
+        # Aggregation pipeline adapted from renderProductFrame
+        aggregation_pipeline = [
+            {"$match": {"semicon_part_number": product.semicon_part_number}},
+            {
+                "$lookup": {
+                    "from": "semicon_product_details",
+                    "localField": "semicon_part_number",
+                    "foreignField": "semicon_part_number",
+                    "as": "product_details"
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "vendor_products",
+                    "localField": "semicon_part_number",
+                    "foreignField": "semicon_part_number",
+                    "as": "vendor_products"
+                }
+            },
+            {"$unwind": {"path": "$vendor_products", "preserveNullAndEmptyArrays": True}},
+            {"$unwind": {"path": "$vendor_products.product_variants", "preserveNullAndEmptyArrays": True}},
+            {
+                "$lookup": {
+                    "from": "product_variants",
+                    "localField": "vendor_products.product_variants",
+                    "foreignField": "semiocon_product_variant_id",
+                    "as": "product_variants"
+                }
+            },
+            {"$unwind": {"path": "$product_variants", "preserveNullAndEmptyArrays": True}},
+            {
+                "$unwind": {
+                    "path": "$product_variants.semicon_product_variant_pricing_id",
+                    "preserveNullAndEmptyArrays": True
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "variant_pricing",
+                    "localField": "product_variants.semicon_product_variant_pricing_id",
+                    "foreignField": "semicon_product_variant_pricing_id",
+                    "as": "product_variants.pricing_details"
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id",
+                    "semicon_part_number": {"$first": "$semicon_part_number"},
+                    "name": {"$first": "$name"},
+                    "description": {"$first": "$description"},
+                    "image_url": {"$first": "$image_url"},
+                    "datasheet_url": {"$first": "$datasheet_url"},
+                    "quantity_available": {"$first": "$quantity_available"},
+                    "unit_price": {"$first": "$unit_price"},
+                    "currency": {"$first": "$currency"},
+                    "status": {"$first": "$status"},
+                    "manufacturerPartNumber": {"$first": "$manufacturerPartNumber"},
+                    "manufacturer_name": {"$first": "$manufacturer_name"},
+                    "created_by": {"$first": "$created_by"},
+                    "created_date": {"$first": "$created_date"},
+                    "modified_by": {"$first": "$modified_by"},
+                    "modified_date": {"$first": "$modified_date"},
+                    "product_details": {"$first": "$product_details"},
+                    "vendor_products": {
+                        "$addToSet": {
+                            "_id": "$vendor_products._id",
+                            "vendor_name": "$vendor_products.vendor_name",
+                            "vendor_product_number": "$vendor_products.vendor_product_number",
+                            "created_by": "$vendor_products.created_by",
+                            "created_date": "$vendor_products.created_date",
+                            "modified_by": "$vendor_products.modified_by",
+                            "modified_date": "$vendor_products.modified_date",
+                            "status": "$vendor_products.status",
+                            "product_variants": "$vendor_products.product_variants"
+                        }
+                    },
+                    "product_variants": {
+                        "$addToSet": {
+                            "$mergeObjects": [
+                                "$product_variants",
+                                {"pricing_details": {"$arrayElemAt": ["$product_variants.pricing_details", 0]}}
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "semicon_part_number": 1,
+                    "name": 1,
+                    "image_url": 1,
+                    "datasheet_url": 1,
+                    "quantity_available": 1,
+                    "unit_price": 1,
+                    "currency": 1,
+                    "status": 1,
+                    "manufacturerPartNumber": 1,
+                    "manufacturer_name": 1,
+                    "created_by": 1,
+                    "created_date": 1,
+                    "modified_by": 1,
+                    "modified_date": 1,
+                    "Category": {"$arrayElemAt": ["$product_details.Category", 0]},
+                    "Description": {
+                        "ProductDescription": "$description",
+                        "DetailedDescription": {"$arrayElemAt": ["$product_details.DetailedDescription", 0]}
+                    },
+                    "Manufacturer": {
+                        "Name": "$manufacturer_name",
+                        "PartNumber": "$manufacturerPartNumber"
+                    },
+                    "ProductDetails": {
+                        "UnitPrice": {"$arrayElemAt": ["$product_details.UnitPrice", 0]},
+                        "ProductUrl": {"$arrayElemAt": ["$product_details.ProductUrl", 0]},
+                        "BackOrderNotAllowed": {"$arrayElemAt": ["$product_details.BackOrderNotAllowed", 0]},
+                        "NormallyStocking": {"$arrayElemAt": ["$product_details.NormallyStocking", 0]},
+                        "Discontinued": {"$arrayElemAt": ["$product_details.Discontinued", 0]},
+                        "EndOfLife": {"$arrayElemAt": ["$product_details.EndOfLife", 0]},
+                        "Ncnr": {"$arrayElemAt": ["$product_details.Ncnr", 0]},
+                        "ManufacturerLeadWeeks": {"$arrayElemAt": ["$product_details.ManufacturerLeadWeeks", 0]},
+                        "Series": {"$arrayElemAt": ["$product_details.Series", 0]},
+                        "Classifications": {"$arrayElemAt": ["$product_details.Classifications", 0]},
+                        "OtherNames": {"$arrayElemAt": ["$product_details.OtherNames", 0]},
+                        "ProductStatus": {"$arrayElemAt": ["$product_details.ProductStatus", 0]}
+                    },
+                    "VendorProducts": "$vendor_products",
+                    "ProductVariants": "$product_variants"
+                }
+            },
+            {"$limit": 1}
+        ]
 
+        # Execute the aggregation using existing engine
+        product_details = await collection.aggregate(aggregation_pipeline).to_list(length=1)
+        
+        if not product_details:
+            # Return basic product info if no details found
+            return {
+                "error": False,
+                "message": "Product retrieved successfully",
+                "data": {
+                    "basic_info": product,
+                    "detailed_info": {
+                        "Category": None,
+                        "Description": {
+                            "ProductDescription": product.description,
+                            "DetailedDescription": None
+                        },
+                        "Manufacturer": {
+                            "Name": product.manufacturer_name,
+                            "PartNumber": product.manufacturerPartNumber
+                        },
+                        "ProductDetails": None,
+                        "VendorProducts": [],
+                        "ProductVariants": []
+                    }
+                }
+            }
 
-@router.get("/{product_id}")
-async def get_product(product_id: int = Path(...)):
-    product = await engine.find_one(Product, Product.product_id == product_id)
-    if not product:
-        logger.warning(f"❌ Product with ID {product_id} not found")
-        raise HTTPException(status_code=404, detail="Product not found")
+        # Format response
+        details = product_details[0]
+        # Filter out empty vendor_products entries
+        vendor_products = [vp for vp in details.get("vendor_products", []) if vp.get("_id")]
+        # Ensure ProductVariants is populated correctly
+        product_variants = details.get("product_variants", []) if details.get("product_variants") else []
 
-    if product.quantity <= 0:
-        logger.warning(f"⚠️ Product {product_id} is out of stock (quantity={product.quantity})")
-        raise HTTPException(status_code=400, detail="Product is out of stock")
+        return {
+            "error": False,
+            "message": "Product retrieved successfully",
+            "data": {
+                "basic_info": product,
+                "detailed_info": {
+                    "Category": details.get("Category"),
+                    "Description": details.get("Description"),
+                    "Manufacturer": {
+                        "Name": product.manufacturer_name,
+                        "PartNumber": product.manufacturerPartNumber
+                    },
+                    "ProductDetails": details.get("ProductDetails"),
+                    "VendorProducts": vendor_products,
+                    "ProductVariants": product_variants
+                }
+            }
+        }
 
-    pricing = await engine.find_one(
-        ProductPricing,
-        (ProductPricing.product_id == product_id) & (ProductPricing.status == True),
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
 
-    return success_response1({"product": product, "pricing": pricing})
-
-
-@router.get("/{product_id}/{quantity}")
-async def get_product_with_quantity(
-    product_id: int = Path(..., description="Product ID"),
-    quantity: int = Path(..., description="Requested quantity"),
+@router.get("/search/advanced")
+async def search_products(
+    q: Optional[str] = Query(None, description="General search term"),
+    manufacturer: Optional[str] = Query(None, description="Manufacturer name"),
+    min_price: Optional[float] = Query(None, ge=0, description="Minimum price"),
+    max_price: Optional[float] = Query(None, ge=0, description="Maximum price"),
+    category: Optional[str] = Query(None, description="Category ID"),
+    in_stock: Optional[bool] = Query(None, description="Filter by stock availability"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200)
 ):
-    product = await engine.find_one(Product, Product.product_id == product_id)
-    if not product:
-        logger.warning(f"❌ Product with ID {product_id} not found")
-        raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+    try:
+        query = QueryExpression()
 
-    if product.quantity <= 0:
-        logger.warning(f"⚠️ Product {product_id} is out of stock (quantity={product.quantity})")
-        raise HTTPException(status_code=400, detail="Product is out of stock")
+        if q:
+            query &= (
+                SemiconProduct.name.contains(q, case_sensitive=False) |
+                SemiconProduct.semicon_part_number.contains(q, case_sensitive=False) |
+                SemiconProduct.manufacturer_part_number.contains(q, case_sensitive=False) |
+                SemiconProduct.description.contains(q, case_sensitive=False)
+            )
 
-    if quantity > product.quantity:
-        logger.warning(f"⚠️ Requested quantity ({quantity}) exceeds stock ({product.quantity})")
-        raise HTTPException(status_code=400, detail=f"Only {product.quantity} items available")
+        if manufacturer:
+            query &= SemiconProduct.vendor_details.contains(manufacturer)
 
-    pricing = await engine.find_one(
-        ProductPricing,
-        (ProductPricing.product_id == product_id) & (ProductPricing.status == True),
-    )
+        if category:
+            query &= SemiconProduct.semicon_category_id == category
 
-    if not pricing:
-        logger.warning(f"❌ No pricing found for product {product_id}")
-        raise HTTPException(status_code=404, detail="Product pricing not found")
+        if min_price is not None:
+            query &= SemiconProduct.unit_price >= min_price
 
-    logger.info(f"✅ Returning product {product_id} with quantity {quantity} and price {pricing.price}")
-    return success_response1({"product": product, "price": pricing.price})
+        if max_price is not None:
+            query &= SemiconProduct.unit_price <= max_price
+
+        if in_stock is not None:
+            if in_stock:
+                query &= SemiconProduct.quantity_available > 0
+            else:
+                query &= (SemiconProduct.quantity_available == 0) | (SemiconProduct.quantity_available == None)
+
+        products = await engine.find(SemiconProduct, query, skip=skip, limit=limit)
+        total_count = await engine.count(SemiconProduct, query)
+
+        return {
+            "products": products,
+            "total": total_count,
+            "skip": skip,
+            "limit": limit,
+            "message": f"Found {len(products)} products"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching products: {str(e)}")
 
 
-@router.post("/add")
-async def create_product(
-    product: ProductSchema, current_user: str = Depends(get_current_user)
-):
-    now = datetime.now(timezone.utc)
+@router.get("/count/total")
+async def get_total_products():
+    try:
+        count = await engine.count(SemiconProduct)
+        return {"total_products": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
 
-    if product.quantity < 0:
-        logger.warning(f"❌ Attempted to create product with negative quantity: {product.quantity}")
-        raise HTTPException(status_code=400, detail="Quantity cannot be negative")
 
-    category = await engine.find_one(Category, Category.category_id == product.category_id)
-    if not category:
-        category = Category(
-            category_id=product.category_id,
-            category_name=product.category,
-            created_by=current_user,
-            modified_by=current_user,
-            created_date=now,
-            modified_date=now,
-            status=True,
+@router.get("/quantity/check/{product_id}/{quantity}")
+async def check_product_availability(product_id: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
+    """
+    Check if a product exists and has sufficient quantity available.
+    
+    Args:
+        product_id: The product ID (UUID) or semicon_part_number
+        quantity: The requested quantity to check
+        
+    Returns:
+        Product details if available, or error message if not found/insufficient quantity
+    """
+    try:
+        # Validate quantity
+        if quantity <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail={"error": True, "message": "Quantity must be greater than 0"}
+            )
+        
+        # Find product by ID or semicon_part_number
+        product = None
+        
+        # Try as UUID first
+        try:
+            product_uuid = UUID(product_id)
+            product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
+        except ValueError:
+            # If not UUID, try as semicon_part_number
+            product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
+        
+        # Check if product exists
+        if not product:
+            raise HTTPException(
+                status_code=404, 
+                detail={
+                    "error": True, 
+                    "message": "Product not found",
+                    "product_id": product_id
+                }
+            )
+        
+        # Check if product has quantity information
+        if product.quantity_available is None:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": "Product quantity information not available",
+                    "product_id": product_id
+                }
+            )
+        
+        # Check if sufficient quantity is available
+        if product.quantity_available < quantity:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
+                    "product_id": product_id,
+                    "requested_quantity": quantity,
+                    "available_quantity": product.quantity_available
+                }
+            )
+        
+        # Return product details if available
+        return {
+            "error": False,
+            "message": "Product available",
+            "data": {
+                "product": {
+                    "id": str(product.id),
+                    "name": product.name,
+                    "semicon_part_number": product.semicon_part_number,
+                    "manufacturer_part_number": product.manufacturerPartNumber,
+                    "manufacturer_name": product.manufacturer_name,
+                    "quantity_available": product.quantity_available,
+                    "unit_price": product.unit_price,
+                    "currency": product.currency,
+                    "description": product.description,
+                    "image_url": product.image_url,
+                    "datasheet_url": product.datasheet_url,
+                    "vendor_details": product.vendor_details,
+                    "status": product.status
+                },
+                "requested_quantity": quantity,
+                "availability_status": "available"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error": True, 
+                "message": f"Error checking product availability: {str(e)}",
+                "product_id": product_id
+            }
         )
-        await engine.save(category)
-
-    manufacturer = await engine.find_one(Manufacturer, Manufacturer.manufacturer_id == product.manufacturer_id)
-    if not manufacturer:
-        manufacturer = Manufacturer(
-            manufacturer_id=product.manufacturer_id,
-            name=product.supplier,
-            created_by=current_user,
-            modified_by=current_user,
-            created_date=now,
-            modified_date=now,
-            status=True,
-        )
-        await engine.save(manufacturer)
-
-    db_product = Product(
-        **product.model_dump(exclude={"last_fetched_at"}),
-        created_by=current_user,
-        modified_by=current_user,
-        created_date=now,
-        modified_date=now,
-        last_fetched_at=now,
-        status=True,
-    )
-    await engine.save(db_product)
-
-    await send_event("product.created", {
-        "action": "product_added",
-        "product": db_product.model_dump(),
-        "created_by": current_user,
-    })
-
-    return success_response2(db_product.model_dump(),
-                            message="Product created successfully")
 
 
 
-@router.put("/update")
-async def update_product_by_body(
-    update: ProductUpdateWithIDSchema,
-    current_user: str = Depends(get_current_user),
-):
-    product_id = update.product_id
-    existing = await engine.find_one(Product, Product.product_id == product_id)
-    if not existing:
-        logger.warning(f"❌ Product with ID {product_id} not found")
-        raise HTTPException(status_code=404, detail="Product not found")
 
-    # Extract only fields that were actually provided, excluding product_id
-    update_data = update.model_dump(exclude_unset=True, exclude={"product_id"})
-
-    # Handle quantity validation
-    if "quantity" in update_data and update_data["quantity"] < 0:
-        raise HTTPException(status_code=400, detail="Quantity cannot be negative")
-
-    # Only update status if it's explicitly provided
-    if "status" in update_data:
-        existing.status = update_data.pop("status")
-
-    # Update all other provided fields
-    for field, value in update_data.items():
-        setattr(existing, field, value)
-
-    # Set audit fields
-    existing.modified_by = current_user
-    existing.modified_date = datetime.now(timezone.utc)
-
-    await engine.save(existing)
-
-    await send_event("product.updated", {
-        "action": "product_updated",
-        "product": existing.model_dump(),
-        "modified_by": current_user,
-    })
-
-    return success_response2(existing.model_dump(), message=f"Product {product_id} Updated successfully")
-
-
-# @router.put("/update")
-# async def update_product_by_body(
-#     update: ProductUpdateWithIDSchema,
-#     current_user: str = Depends(get_current_user),
-# ):
-#     product_id = update.product_id
-#     existing = await engine.find_one(Product, Product.product_id == product_id)
-#     if not existing:
-#         logger.warning(f"❌ Product with ID {product_id} not found")
-#         raise HTTPException(status_code=404, detail="Product not found")
-
-#     update_data = update.model_dump(exclude_unset=True)
-#     update_data.pop("product_id", None)
-
-#     if "quantity" in update_data and update_data["quantity"] < 0:
-#         raise HTTPException(status_code=400, detail="Quantity cannot be negative")
-
-#     for field, value in update_data.items():
-#         setattr(existing, field, value)
-
-#     existing.modified_by = current_user
-#     existing.modified_date = datetime.now(timezone.utc)
-#     await engine.save(existing)
-
-#     await send_event("product.updated", {
-#         "action": "product_updated",
-#         "product": existing.model_dump(),
-#         "modified_by": current_user,
-#     })
-
-#     return success_response2(existing.model_dump(),message=f"Product {product_id} Updated successfully")
-
-# @router.post("/status")
-# async def toggle_product_status_by_body(
-#     request: ProductIDRequest,
-#     current_user: str = Depends(get_current_user),
-# ):
-#     product_id = request.product_id
-#     product = await engine.find_one(Product, Product.product_id == product_id)
-#     if not product:
-#         logger.warning(f"❌ Product with ID {product_id} not found")
-#         raise HTTPException(status_code=404, detail="Product not found")
-
-#     product.status = not product.status
-#     await engine.save(product)
-
-#     await send_event("product.activate_deactivate", {
-#         "action": "activate" if product.status else "deactivate",
-#         "product": product.model_dump(),
-#         "toggled_by": current_user,
-#     })
-
-#     logger.info(f"🔁 Product {product_id} status changed to {product.status} by {current_user}")
-#     return success_response2(
-#     product.model_dump(),
-#     message=f"Product {product_id} is now {'Active' if product.status else 'Inactive'}"
-#     )

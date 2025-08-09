@@ -16,8 +16,92 @@ class DigiKeyService {
         this.accessToken = null;
         this.tokenExpiry = null;
 
+        // Cache for categories data
+        this.categoriesCache = null;
+
         // MongoDB collection name
         this.collectionName = 'products';
+    }
+
+    /**
+     * Fetch categories from DigiKey API with caching
+     * @returns {Promise<Array>} Categories array
+     */
+    async fetchCategories() {
+        if (this.categoriesCache) {
+            loggerInfo('Using cached categories data');
+            return this.categoriesCache;
+        }
+        try {
+            const token = await this.getAccessToken();
+            const url = `${this.baseURL}/search/categories`;
+
+            loggerInfo(`Fetching categories from: ${url}`);
+            loggerInfo(`Request headers: Authorization: Bearer ${token.substring(0, 10)}..., X-DIGIKEY-Client-Id: ${this.clientId.substring(0, 5)}...`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-DIGIKEY-Client-Id': this.clientId,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 15000
+            });
+
+            loggerInfo(`Categories request successful. Response status: ${response.status}`);
+
+            if (response.status === 200 && response.data) {
+                this.categoriesCache = response.data.Categories || [];
+                loggerInfo('Fetched categories data from DigiKey API');
+                return this.categoriesCache;
+            } else {
+                loggerWarn('Failed to fetch categories data from DigiKey API');
+                return [];
+            }
+        } catch (error) {
+            loggerError(`Error fetching categories: ${error.message}`);
+            if (error.response) {
+                loggerError(`Categories request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+            }
+            return [];
+        }
+    }
+
+    /**
+     * Build a map of categories by CategoryId for quick lookup
+     * @param {Array} categories - Categories array
+     * @returns {Map} Map of CategoryId to category object with parent reference
+     */
+    buildCategoryMap(categories) {
+        const map = new Map();
+        function traverse(categoriesList, parent = null) {
+            categoriesList.forEach(cat => {
+                if (cat) {
+                    map.set(cat.CategoryId, { ...cat, parent });
+                    if (cat.Children && cat.Children.length > 0) {
+                        traverse(cat.Children, cat);
+                    }
+                }
+            });
+        }
+        traverse(categories);
+        return map;
+    }
+
+    /**
+     * Get full category hierarchy names array from categoryId
+     * @param {number} categoryId - Category ID
+     * @param {Map} categoryMap - Map of categories
+     * @returns {Array} Array of category names from root to leaf
+     */
+    getCategoryHierarchy(categoryId, categoryMap) {
+        const hierarchy = [];
+        let current = categoryMap.get(categoryId);
+        while (current) {
+            hierarchy.unshift(current.Name);
+            current = current.parent;
+        }
+        return hierarchy;
     }
 
     /**
@@ -28,10 +112,15 @@ class DigiKeyService {
         try {
             // Check if token is still valid
             if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+                loggerInfo('Using cached DigiKey access token');
                 return this.accessToken;
             }
 
-            loggerInfo('Requesting new DigiKey access token...');
+            if (!this.clientId || !this.clientSecret) {
+                throw new Error('DigiKey API client ID or client secret is missing. Please set DIGIKEY_CLIENT_ID and DIGIKEY_CLIENT_SECRET environment variables.');
+            }
+
+            loggerInfo(`Requesting new DigiKey access token with Client ID: ${this.clientId.substring(0, 5)}...`);
 
             const tokenData = {
                 grant_type: 'client_credentials',
@@ -39,12 +128,16 @@ class DigiKeyService {
                 client_secret: this.clientSecret
             };
 
+            loggerInfo(`Making token request to: ${this.tokenURL}`);
+
             const response = await axios.post(this.tokenURL, tokenData, {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 timeout: 10000
             });
+
+            loggerInfo(`Token request successful. Response status: ${response.status}`);
 
             this.accessToken = response.data.access_token;
             // Set expiry time (subtract 5 minutes for safety)
@@ -55,6 +148,9 @@ class DigiKeyService {
 
         } catch (error) {
             loggerError(`Failed to get DigiKey access token: ${error.message}`);
+            if (error.response) {
+                loggerError(`Token request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+            }
 
             // For development/testing purposes, we'll simulate a successful response
             loggerWarn('Using mock data for DigiKey API response');
@@ -78,13 +174,19 @@ class DigiKeyService {
             // Construct request body for POST request
             const requestBody = {
                 Keywords: query,
-                Limit: 50,
-                Offset: 0,
+                RecordCount: 50,
+                Includes: ["Classifications", "PrimarySupplier", "ProductInfo"],
                 // Optionally add FilterOptionsRequest and SortOptions here if needed
             };
 
+            const searchURL = this.searchURL; // Use the v4 endpoint
+
+            loggerInfo(`Making search request to: ${searchURL}`);
+            loggerInfo(`Request headers: Authorization: Bearer ${token.substring(0, 10)}..., X-DIGIKEY-Client-Id: ${this.clientId.substring(0, 5)}...`);
+            loggerInfo(`Request body: ${JSON.stringify(requestBody)}`);
+
             try {
-                const response = await axios.post(this.searchURL, requestBody, {
+                const response = await axios.post(searchURL, requestBody, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'X-DIGIKEY-Client-Id': this.clientId,
@@ -94,9 +196,55 @@ class DigiKeyService {
                     timeout: 15000
                 });
 
+                loggerInfo(`Search request successful. Response status: ${response.status}`);
+                loggerInfo(`Response data keys: ${Object.keys(response.data)}`);
+
                 const products = this.parseDigiKeyResponse(response.data, query);
-                loggerSuccess(`Found ${products.length} products from DigiKey API`);
-                return products;
+
+                // Fetch categories to enrich subCategory data
+                const categories = await this.fetchCategories();
+
+                // Build category map
+                const categoryMap = this.buildCategoryMap(categories);
+
+                // Enrich products with categoryHierarchy and subCategory from categories map
+                const enrichedProducts = products.map(product => {
+                    let categoryHierarchy = [];
+
+                    // Try to get hierarchy from categoryId
+                    if (product.categoryId) {
+                        categoryHierarchy = this.getCategoryHierarchy(product.categoryId, categoryMap);
+                    }
+
+                    // If no hierarchy found, try to build from Classifications
+                    if (categoryHierarchy.length === 0 && product.classifications) {
+                        const classifications = product.classifications;
+                        const hierarchy = [];
+
+                        if (classifications.Category) {
+                            hierarchy.push(classifications.Category.Name);
+                        }
+                        if (classifications.Family) {
+                            hierarchy.push(classifications.Family.Name);
+                        }
+                        if (classifications.SubFamily) {
+                            hierarchy.push(classifications.SubFamily.Name);
+                        }
+
+                        categoryHierarchy = hierarchy.filter(Boolean);
+                    }
+
+                    // If still no hierarchy, use mainCategory
+                    if (categoryHierarchy.length === 0 && product.mainCategory) {
+                        categoryHierarchy = [product.mainCategory];
+                    }
+
+                    product.categoryHierarchy = categoryHierarchy;
+                    return product;
+                });
+
+                loggerSuccess(`Found ${enrichedProducts.length} products from DigiKey API with enriched subCategory data`);
+                return enrichedProducts;
 
             } catch (apiError) {
                 if (apiError.response) {
@@ -126,6 +274,12 @@ class DigiKeyService {
 
             if (apiResponse.Products && Array.isArray(apiResponse.Products)) {
                 apiResponse.Products.forEach(product => {
+                    if (product.Classifications) {
+                        loggerInfo(`Product classifications for productId ${product.ProductId}: ${JSON.stringify(product.Classifications)}`);
+                    } else {
+                        loggerWarn(`No classifications found for productId ${product.ProductId}`);
+                    }
+
                     const parsedProduct = {
                         productId: product.ProductId || product.ManufacturerPartNumber || `unknown_${Date.now()}`,
                         name: (product.Description && product.Description.ProductDescription) || product.ManufacturerPartNumber || 'Unknown Product',
@@ -138,7 +292,8 @@ class DigiKeyService {
                         manufacturerPartNumber: product.ManufacturerProductNumber || product.ManufacturerPartNumber || '',
                         digiKeyPartNumber: (product.ProductVariations && product.ProductVariations.length > 0 && product.ProductVariations[0].DigiKeyProductNumber) || product.DigiKeyProductNumber || '',
                         quantityAvailable: product.QuantityAvailable || 0,
-                        category: (product.Category && product.Category.Name) || 'Uncategorized',
+                        mainCategory: (product.Classifications && product.Classifications.Category && product.Classifications.Category.Name) || (product.Category && product.Category.Name) || 'Uncategorized',
+                        categoryId: (product.Classifications && product.Classifications.Category && product.Classifications.Category.CategoryId) || (product.Category && product.Category.CategoryId) || null,
                         productUrl: product.ProductUrl || '',
                         datasheetUrl: product.DatasheetUrl || '',
                         photoUrl: product.PhotoUrl || '',
@@ -262,7 +417,7 @@ class DigiKeyService {
     }
 
     /**
-     * Store products in MongoDB using upsert with incremental productId assignment
+     * Store products in MongoDB only if they don't already exist
      * @param {Array} products - Array of products to store
      * @returns {Promise<Object>} Operation result
      */
@@ -270,17 +425,14 @@ class DigiKeyService {
         try {
             if (!products || products.length === 0) {
                 loggerWarn('No products to store');
-                return { upsertedCount: 0, modifiedCount: 0 };
+                return { insertedCount: 0, skippedCount: 0 };
             }
 
             const collection = getCollection(this.collectionName);
-            let upsertedCount = 0;
-            let modifiedCount = 0;
+            let insertedCount = 0;
+            let skippedCount = 0;
 
             loggerInfo(`Storing ${products.length} products in MongoDB...`);
-
-            // Get current max productId for incremental assignment
-            let nextProductId = await this.getNextProductId();
 
             // Use Promise.all for concurrent operations
             const operations = products.map(async (product) => {
@@ -290,23 +442,25 @@ class DigiKeyService {
                         product.productId = uuidv4();
                     }
 
-                    const result = await collection.updateOne(
-                        { productId: product.productId },
-                        {
-                            $set: {
-                                ...product,
-                                updatedAt: new Date()
-                            }
-                        },
-                        { upsert: true }
-                    );
+                    // Check if product already exists
+                    const existingProduct = await collection.findOne({ productId: product.productId });
 
-                    if (result.upsertedCount > 0) {
-                        upsertedCount++;
-                    } else if (result.modifiedCount > 0) {
-                        modifiedCount++;
+                    if (existingProduct) {
+                        // Product already exists, skip it
+                        skippedCount++;
+                        loggerInfo(`Product ${product.productId} already exists, skipping...`);
+                        return null;
                     }
 
+                    // Product doesn't exist, insert it
+                    const result = await collection.insertOne({
+                        ...product,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    });
+
+                    insertedCount++;
+                    loggerInfo(`Successfully inserted product ${product.productId}`);
                     return result;
                 } catch (error) {
                     loggerError(`Error storing product ${product.productId}: ${error.message}`);
@@ -316,8 +470,8 @@ class DigiKeyService {
 
             await Promise.all(operations);
 
-            const result = { upsertedCount, modifiedCount };
-            loggerSuccess(`Successfully stored products - Inserted: ${upsertedCount}, Updated: ${modifiedCount}`);
+            const result = { insertedCount, skippedCount };
+            loggerSuccess(`Successfully stored products - Inserted: ${insertedCount}, Skipped: ${skippedCount}`);
 
             return result;
 
@@ -374,7 +528,8 @@ class DigiKeyService {
 
             if (products.length > 0) {
                 // Store products in MongoDB
-                await this.storeProducts(products);
+                const storeResult = await this.storeProducts(products);
+                loggerInfo(`Store operation result - Inserted: ${storeResult.insertedCount}, Skipped: ${storeResult.skippedCount}`);
             }
 
             loggerSuccess(`Completed search and store operation for: "${query}"`);
@@ -397,6 +552,8 @@ class DigiKeyService {
             const url = `${this.baseURL}/search/${encodeURIComponent(productNumber)}/productdetails`;
 
             loggerInfo(`Fetching product details from DigiKey API for product number: ${productNumber}`);
+            loggerInfo(`Making request to: ${url}`);
+            loggerInfo(`Request headers: Authorization: Bearer ${token.substring(0, 10)}..., X-DIGIKEY-Client-Id: ${this.clientId.substring(0, 5)}...`);
 
             const response = await axios.get(url, {
                 headers: {
@@ -407,6 +564,8 @@ class DigiKeyService {
                 timeout: 15000
             });
 
+            loggerInfo(`Product details request successful. Response status: ${response.status}`);
+
             const product = response.data.Product;
 
             if (!product) {
@@ -414,8 +573,12 @@ class DigiKeyService {
                 return null;
             }
 
+            // Log entire product details for debugging
+            loggerInfo(`Full product details for ${productNumber}: ${JSON.stringify(product)}`);
+
             // Store the product details in MongoDB
-            await this.storeProducts([product]);
+            const storeResult = await this.storeProducts([product]);
+            loggerInfo(`Store operation result - Inserted: ${storeResult.insertedCount}, Skipped: ${storeResult.skippedCount}`);
 
             loggerSuccess(`Stored product details for product number: ${productNumber}`);
 
@@ -423,7 +586,154 @@ class DigiKeyService {
 
         } catch (error) {
             loggerError(`Error fetching product details for ${productNumber}: ${error.message}`);
+            if (error.response) {
+                loggerError(`Product details request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+            }
             return null;
+        }
+    }
+    /**
+     * Get categories from DigiKey API
+     * @returns {Promise<Object>} Categories response object
+     */
+    async getCategories() {
+        try {
+            const token = await this.getAccessToken();
+            const url = `${this.baseURL}/search/categories`;
+
+            loggerInfo(`Fetching categories from: ${url}`);
+            loggerInfo(`Request headers: Authorization: Bearer ${token.substring(0, 10)}..., X-DIGIKEY-Client-Id: ${this.clientId.substring(0, 5)}...`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-DIGIKEY-Client-Id': this.clientId,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 15000
+            });
+
+            loggerInfo(`Categories request successful. Response status: ${response.status}`);
+
+            return response.data;
+        } catch (error) {
+            loggerError(`Error fetching categories from DigiKey API: ${error.message}`);
+            if (error.response) {
+                loggerError(`Categories request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Get manufacturers list from DigiKey API
+     * @returns {Promise<Object>} Manufacturers response object
+     */
+    async getManufacturers() {
+        try {
+            const token = await this.getAccessToken();
+            const url = `${this.baseURL}/search/manufacturers`;
+
+            loggerInfo(`Fetching manufacturers from: ${url}`);
+            loggerInfo(`Request headers: Authorization: Bearer ${token.substring(0, 10)}..., X-DIGIKEY-Client-Id: ${this.clientId.substring(0, 5)}...`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-DIGIKEY-Client-Id': this.clientId,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 15000
+            });
+
+            loggerInfo(`Manufacturers request successful. Response status: ${response.status}`);
+
+            if (response.status === 200 && response.data) {
+                loggerInfo('Fetched manufacturers data from DigiKey API');
+                return response.data;
+            } else {
+                loggerWarn('Failed to fetch manufacturers data from DigiKey API');
+                return { Manufacturers: [] };
+            }
+        } catch (error) {
+            loggerError(`Error fetching manufacturers: ${error.message}`);
+            if (error.response) {
+                loggerError(`Manufacturers request failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
+            }
+            return { Manufacturers: [] };
+        }
+    }
+    /**
+     * Store categories in MongoDB with deduplication
+     * @param {Array} categories - Array of category objects
+     * @returns {Promise<Object>} Result of insert operation
+     */
+    async storeCategories(categories) {
+        if (!categories || categories.length === 0) {
+            loggerWarn('No categories to store');
+            return { insertedCount: 0, skippedCount: 0 };
+        }
+        try {
+            const collection = getCollection('categories');
+            let insertedCount = 0;
+            let skippedCount = 0;
+
+            for (const category of categories) {
+                // Use CategoryId as unique identifier
+                const existing = await collection.findOne({ CategoryId: category.CategoryId });
+                if (existing) {
+                    skippedCount++;
+                    continue;
+                }
+                await collection.insertOne({
+                    ...category,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                insertedCount++;
+            }
+            loggerSuccess(`Stored categories - Inserted: ${insertedCount}, Skipped: ${skippedCount}`);
+            return { insertedCount, skippedCount };
+        } catch (error) {
+            loggerError(`Error storing categories: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Store manufacturers in MongoDB with deduplication
+     * @param {Array} manufacturers - Array of manufacturer objects
+     * @returns {Promise<Object>} Result of insert operation
+     */
+    async storeManufacturers(manufacturers) {
+        if (!manufacturers || manufacturers.length === 0) {
+            loggerWarn('No manufacturers to store');
+            return { insertedCount: 0, skippedCount: 0 };
+        }
+        try {
+            const collection = getCollection('manufacturers');
+            let insertedCount = 0;
+            let skippedCount = 0;
+
+            for (const manufacturer of manufacturers) {
+                // Use Id as unique identifier
+                const existing = await collection.findOne({ Id: manufacturer.Id });
+                if (existing) {
+                    skippedCount++;
+                    continue;
+                }
+                await collection.insertOne({
+                    ...manufacturer,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                insertedCount++;
+            }
+            loggerSuccess(`Stored manufacturers - Inserted: ${insertedCount}, Skipped: ${skippedCount}`);
+            return { insertedCount, skippedCount };
+        } catch (error) {
+            loggerError(`Error storing manufacturers: ${error.message}`);
+            throw error;
         }
     }
 }

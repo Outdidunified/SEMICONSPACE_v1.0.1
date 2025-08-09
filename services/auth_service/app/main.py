@@ -8,9 +8,9 @@ from sqlalchemy.exc import OperationalError
 from app.register import router as register_router
 from app.login import router as login_router
 from app.Admin_login import router as admin_login_router
-from app.OrderManager import router as Order_login_router
-from app.Productmanager_login import router as product_manager_login_router
-from app.UserManager import router as user_manager_login_router
+#from app.OrderManager import router as Order_login_router
+#from app.Productmanager_login import router as product_manager_login_router
+#from app.UserManager import router as user_manager_login_router
 from app.kafka_producer import start_kafka, stop_kafka
 from app.database import engine, Base
 
@@ -68,6 +68,6 @@ app.add_middleware(
 app.include_router(register_router)
 app.include_router(login_router)
 app.include_router(admin_login_router)
-app.include_router(Order_login_router)
-app.include_router(product_manager_login_router)
-app.include_router(user_manager_login_router)
+# app.include_router(Order_login_router)
+# app.include_router(product_manager_login_router)
+# app.include_router(user_manager_login_router)

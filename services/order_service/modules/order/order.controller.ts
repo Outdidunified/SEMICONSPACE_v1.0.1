@@ -11,13 +11,13 @@ import {
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-
+ 
 @Controller('order')
 export class OrderController {
   private readonly logger = new Logger(OrderController.name);
-
+ 
   constructor(private readonly orderService: OrderService) {}
-
+ 
   @Post('createorder')
   @HttpCode(HttpStatus.OK)
   async placeOrder(@Body() payload: CreateOrderDto) {
@@ -32,7 +32,7 @@ export class OrderController {
       );
     }
   }
-
+ 
   @Post('user-orders')
   @HttpCode(HttpStatus.OK)
   async getOrdersByUser(@Body('userId') userId: string) {
@@ -42,7 +42,7 @@ export class OrderController {
         HttpStatus.BAD_REQUEST,
       );
     }
-
+ 
     try {
       const orders = await this.orderService.getOrdersByUser(userId);
       return { error: false, orders };
@@ -54,7 +54,7 @@ export class OrderController {
       );
     }
   }
-
+ 
   @Get(':orderId')
   @HttpCode(HttpStatus.OK)
   async getOrder(@Param('orderId') orderId: string) {
@@ -64,7 +64,7 @@ export class OrderController {
         HttpStatus.BAD_REQUEST,
       );
     }
-
+ 
     try {
       const order = await this.orderService.getOrderById(orderId);
       return { error: false, order };
