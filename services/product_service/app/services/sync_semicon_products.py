@@ -117,7 +117,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
 
     if not category_info:
         raise ValueError("No category details found in Digikey data")
-    print(f"Category Info: {category_info}")
+    #print(f"Category Info: {category_info}")
 
     category = await db.find_one(
         SemiconCategory,
@@ -223,6 +223,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
 
     # -------- PRODUCT DETAILS --------
     details = SemiconProductDetails(
+        name=listing_product.name,
         semicon_part_number=listing_product.semicon_part_number or "",
         productId=UUID(digikey_data.get("productId")),
         UnitPrice=listing_product.UnitPrice or 0,
@@ -263,7 +264,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
         modified_by="admin",
         status=True
     )
-    print(f"Product Details: {details}")
+    #print(f"Product Details: {details}")
     await db.save(details)
 
     # -------- VENDOR PRODUCT --------
@@ -364,5 +365,15 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
         await db.save(variant_doc)
     vendor_product.product_variants = list(set(vendor_product.product_variants + variant_ids))
     await db.save(vendor_product)
-    all_data_dict = await gather_full_product_data(db, listing_product, details, vendor_product)
+    sb= None
+    if details.Category.ChildCategories:
+        sb = details.Category.ChildCategories[0].Name
+    all_data_dict = {
+        "productname": listing_product.name,
+        "category": details.Category.Name,
+        "manufacturer": manu_name,
+        "subcategory": sb,
+     }
+
     await send_event(topic="product.added", value=all_data_dict)
+    return listing_product 

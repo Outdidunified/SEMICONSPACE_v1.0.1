@@ -99,7 +99,7 @@ class ProductStatus(EmbeddedModel):
 
 class SemiconProduct(Model):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_field=True)
-
+    name: Optional[str] = None
     semicon_part_number: str
     productId: uuid.UUID
     UnitPrice: float
