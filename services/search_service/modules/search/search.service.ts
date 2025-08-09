@@ -22,7 +22,7 @@ export class SearchService {
         productname: product.productname,
         category: product.category,
         manufacturer: product.manufacturer,
-        subcategory: product.subcategory
+        subcategory: product.subcategory,
       };
 
       // Store in Typesense
@@ -33,27 +33,28 @@ export class SearchService {
 
       this.logger.log(`✅ Product upserted to Typesense: ${product.productname}`);
 
-      // Send to external recommendations API
-      await this.sendToRecommendationAPI(document);
+      // Send to external recommendations API with query param as productname
+      await this.sendToRecommendationAPI(document, product.productname);
 
-    } catch (err) {
+    } catch (err: any) {
       this.logger.error(`❌ Error in createOrUpdateProduct: ${err.message}`, err.stack);
     }
   }
 
   /**
-   * Send product to external API
+   * Send product to external API, query is injected into URL path
    */
-  private async sendToRecommendationAPI(product: any) {
+  private async sendToRecommendationAPI(product: any, query: string) {
     try {
-      const response = await axios.post(
-        'http://172.232.110.10:8003/product/search/',
-        product,
-        { timeout: 5000 }
-      );
+      // URL encode query for safety
+      const encodedQuery = encodeURIComponent(query);
+
+      const apiUrl = `http://172.232.110.10:8003/product/search/${encodedQuery}`;
+
+      const response = await axios.post(apiUrl, product, { timeout: 5000 });
 
       this.logger.log(`📡 Sent to external API. Status: ${response.status}`);
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`❌ Failed to send to external API: ${error.message}`);
     }
   }
@@ -62,30 +63,29 @@ export class SearchService {
    * Search products in Typesense
    */
   async search(query: string) {
-  try {
-    const searchParams = {
-      q: query,
-      query_by: 'productname,category,manufacturer,subcategory',
-      prefix: true,
-      num_typos: 6,
-      per_page: 250,  // maximum allowed
-    };
+    try {
+      const searchParams = {
+        q: query,
+        query_by: 'productname,category,manufacturer,subcategory',
+        prefix: true,
+        num_typos: 6,
+        per_page: 250, // maximum allowed
+      };
 
-    const result = await typesenseClient
-      .collections('products')
-      .documents()
-      .search(searchParams);
+      const result = await typesenseClient
+        .collections('products')
+        .documents()
+        .search(searchParams);
 
-    return {
-      count: result.found,
-      hits: result.hits.map(hit => hit.document),
-    };
-  } catch (err) {
-    this.logger.error(`❌ Typesense search failed: ${err.message}`);
-    return { count: 0, hits: [] };
+      return {
+        count: result.found,
+        hits: result.hits.map(hit => hit.document),
+      };
+    } catch (err: any) {
+      this.logger.error(`❌ Typesense search failed: ${err.message}`);
+      return { count: 0, hits: [] };
+    }
   }
-}
-
 
   /**
    * Generate unique ID for Typesense
