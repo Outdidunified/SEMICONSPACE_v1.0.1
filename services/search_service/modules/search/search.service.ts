@@ -51,7 +51,7 @@ export class SearchService {
 
       const apiUrl = `http://172.232.110.10:8003/product/search/${encodedQuery}`;
 
-      const response = await axios.post(apiUrl, product, { timeout: 5000 });
+      const response = await axios.get(apiUrl, product);
 
       this.logger.log(`📡 Sent to external API. Status: ${response.status}`);
     } catch (error: any) {
