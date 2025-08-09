@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query, Request, Path
 from typing import Optional, List
 import httpx
+import re
 import uuid
+from odmantic import query
 from app.services.sync_semicon_products import fetch_and_sync_semicon_product
 from app.database import engine
 from app.models.semicon_products import SemiconProduct
@@ -61,12 +63,14 @@ async def sync_digikey_product(payload: dict):
                 continue
 
             merged_data = {**product_basic, **details_data["product"]}
-            await fetch_and_sync_semicon_product(merged_data)
+            result= await fetch_and_sync_semicon_product(merged_data)
             synced += 1
 
+           # print(f"Synced product: {merged_data}")
     return {
         "status": "success",
-        "message": f"Sync completed: {synced} products synced, {skipped} products skipped (already exists or failed)."
+        "message": f"Sync completed: {synced} products synced, {skipped} products skipped (already exists or failed).",
+        "returned_data": result
     }
 
 
@@ -154,6 +158,7 @@ async def get_all_products(
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
     
 
+
 @router.get("/{product_id}/productdetails")
 async def get_product_by_id(product_id: str):
     try:
@@ -166,6 +171,7 @@ async def get_product_by_id(product_id: str):
             product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
 
         if not product:
+            print(f"Prodppppppp found for product_id: {product_id}")
             raise HTTPException(status_code=404, detail="Product not found")
 
         collection = engine.get_collection(SemiconProduct)
@@ -399,10 +405,23 @@ async def get_product_by_id(product_id: str):
                             "DetailedDescription": None
                         },
                         "Manufacturer": {
-                            "Name": product.manufacturer_name if hasattr(product, "manufacturer_name") else None,
+                            "Name": getattr(product, "manufacturer_name", None),
                             "PartNumber": getattr(product, "manufacturerPartNumber", None)
                         },
-                        "ProductDetails": None,
+                        "ProductDetails": {
+                            "UnitPrice": None,
+                            "ProductUrl": None,
+                            "BackOrderNotAllowed": None,
+                            "NormallyStocking": None,
+                            "Discontinued": None,
+                            "EndOfLife": None,
+                            "Ncnr": None,
+                            "ManufacturerLeadWeeks": None,
+                            "Series": None,
+                            "Classifications": None,
+                            "OtherNames": [],
+                            "ProductStatus": None
+                        },
                         "VendorProducts": [],
                         "ProductVariants": []
                     }
@@ -416,10 +435,9 @@ async def get_product_by_id(product_id: str):
         # Then assign:
         details["ProductVariants"] = product_variants
         return {
-        "error": False,
-        "message": "Product retrieved successfully",
-        "data": {
-            "basic_info": {
+            "error": False,
+            "message": "Product retrieved successfully",
+            "data": {
                 "id": str(product.id),
                 "name": product.name,
                 "semicon_part_number": product.semicon_part_number,
@@ -453,15 +471,14 @@ async def get_product_by_id(product_id: str):
                 "VendorProducts": details.get("VendorProducts", []),
                 "ProductVariants": details.get("ProductVariants", [])
             }
-    }
-}
+            }
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
-
-
+             print(f"Error fetching product {product_id}: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
+    
 @router.get("/search/advanced")
 async def search_products(
     q: Optional[str] = Query(None, description="General search term"),
@@ -627,8 +644,52 @@ async def check_product_availability(product_id: str, quantity: int = Path(..., 
                 "message": f"Error checking product availability: {str(e)}",
                 "product_id": product_id
             }
+
         )
+@router.get("/search/{query}")
+async def search_and_get_details(query: str):
+    async with httpx.AsyncClient(timeout=180) as client:
+        # Mongo $or search
+        search_query = {
+            "$or": [
+                {"name": {"$regex": query, "$options": "i"}},
+                {"Manufacturer.Name": {"$regex": query, "$options": "i"}},
+                {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}},
+                {"Category.Name": {"$regex": query, "$options": "i"}},
+            ]
+        }
 
+        # Search in Mongo
+        collection = engine.get_collection(SemiconProductDetails)
+        product_match = await collection.find_one(search_query)
 
+        if product_match and product_match.get("semicon_part_number"):
+            semicon_part_number = product_match["semicon_part_number"]
+            details_url = f"http://localhost:8002/product/{semicon_part_number}/productdetails"
+            resp = await client.get(details_url)
+            resp.raise_for_status()
+            return resp.json()
 
+        # If not found → DigiKey sync
+        digi_url = "http://localhost:8000/product/sync/digikey"
+        digi_resp = await client.post(digi_url, json={"query": query})
+        digi_resp.raise_for_status()
+        digi_data = digi_resp.json()
 
+        products = digi_data.get("products", [])
+        if not products:
+            raise HTTPException(status_code=404, detail="No products found")
+
+        # Get first product's details
+        semicon_part_number = products[0].get("semicon_part_number")
+        if not semicon_part_number:
+            raise HTTPException(status_code=500, detail="First product missing part number")
+
+        detail_url = f"http://localhost:8002/product/{semicon_part_number}/productdetails"
+        detail_resp = await client.get(detail_url)
+        detail_resp.raise_for_status()
+
+        return {
+            "message": "Products synced from DigiKey",
+            "data": [detail_resp.json()]
+        }
