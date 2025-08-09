@@ -1,32 +1,38 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { typesenseClient } from './modules/search/typesense.client';
+import * as dotenv from 'dotenv';
+
+dotenv.config(); // load .env config early
 
 async function createSchemaIfNotExists() {
   try {
-    // First, delete old collection if it exists
-    try {
-      await typesenseClient.collections('products').delete();
-      console.log('🗑 Old "products" collection deleted.');
-    } catch {
-      console.log('ℹ No existing "products" collection to delete.');
+    // Try to retrieve the collection
+    await typesenseClient.collections('products').retrieve();
+    console.log('✅ Collection "products" already exists — skipping creation.');
+  } catch (err: any) {
+    if (err.httpStatus === 404) {
+      // Collection doesn't exist, create it
+      try {
+        await typesenseClient.collections().create({
+          name: 'products',
+          fields: [
+            { name: 'id', type: 'string' },
+            { name: 'productname', type: 'string' },
+            { name: 'category', type: 'string', facet: true },
+            { name: 'manufacturer', type: 'string', facet: true },
+            { name: 'subcategory', type: 'string', facet: true },
+          ],
+        });
+        console.log('✅ Created new Typesense collection "products".');
+      } catch (createErr) {
+        console.error('❌ Failed to create schema:', createErr);
+        throw createErr;
+      }
+    } else {
+      console.error('❌ Failed to check collection existence:', err);
+      throw err;
     }
-
-    // Create new collection without status field
-    await typesenseClient.collections().create({
-      name: 'products',
-      fields: [
-        { name: 'id', type: 'string' },
-        { name: 'productname', type: 'string' },
-        { name: 'category', type: 'string', facet: true },
-        { name: 'manufacturer', type: 'string', facet: true },
-        { name: 'subcategory', type: 'string', facet: true }
-      ]
-    });
-
-    console.log('✅ New Typesense schema created (no status field).');
-  } catch (err) {
-    console.error('❌ Failed to create schema:', err);
   }
 }
 
@@ -34,8 +40,12 @@ async function bootstrap() {
   await createSchemaIfNotExists();
 
   const app = await NestFactory.create(AppModule);
-  await app.listen(8004);
-  console.log('🚀 Search Service running at http://localhost:8004');
+
+  // Read PORT from env, default to 8004
+  const PORT = process.env.PORT || 8004;
+
+  await app.listen(PORT);
+  console.log(`🚀 Search Service running at http://localhost:${PORT}`);
 }
 
 bootstrap();
