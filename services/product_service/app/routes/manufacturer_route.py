@@ -191,3 +191,44 @@ async def get_products_count_by_manufacturer(manufacturer_id: str):
             status_code=500,
             detail={"error": True, "message": f"Internal server error while counting products"}
         )
+@router.get("/analytics/count/manufacturers", tags=["Analytics"])
+async def get_manufacturer_counts():
+    """Get counts of active manufacturers with details"""
+    try:
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconManufacturer)
+        
+        # Fetch all manufacturers
+        manufacturers = await collection.find({"status": True}).to_list(None)
+        
+        total_active_manufacturers = len(manufacturers)
+        
+        manufacturers_data = []
+        
+        for manufacturer in manufacturers:
+            manufacturer_info = {
+                "name": manufacturer.get("digikey_name", "Unknown"),
+                "manufacturer_id": manufacturer.get("semicon_manufacturer_id", ""),
+            }
+            
+            manufacturers_data.append(manufacturer_info)
+        
+        return {
+            "error": False,
+            "message": "Manufacturer counts retrieved successfully",
+            "data": {
+                "total_active_manufacturers": total_active_manufacturers,
+                "manufacturers": manufacturers_data
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error counting manufacturers: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to count manufacturers: {str(e)}",
+                "data": []
+            }
+        )

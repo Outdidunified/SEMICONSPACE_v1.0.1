@@ -226,3 +226,68 @@ async def get_child_category_by_id(child_category_id: str):
                 "data": []
             }
         )
+@router.get("/analytics/count/categories", tags=["Analytics"])
+async def get_category_counts():
+    """Get counts of all categories and subcategories with names"""
+    try:
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconCategory)
+        
+        # Fetch all categories
+        categories = await collection.find().to_list(None)
+        
+        total_parent_categories = len(categories)
+        total_child_categories = 0
+        total_grandchild_categories = 0
+        
+        categories_data = []
+        
+        for category in categories:
+            parent_info = {
+                "name": category.get("digikey_name", "Unknown"),
+                "parent_category_id": category.get("semicon_category_id", ""),
+                "child_count": len(category.get("child_categories", [])),
+                "children": []
+            }
+            
+            # Count child categories
+            child_categories = category.get("child_categories", [])
+            total_child_categories += len(child_categories)
+            
+            # Process child categories
+            for child in child_categories:
+                child_info = {
+                    "name": child.get("digikey_child_name", "Unknown"),
+                    "child_category_id": child.get("semicon_child_category_id", ""),
+                    "grandchild_count": len(child.get("child_categories", []))
+                }
+                
+                # Count grandchild categories
+                grandchild_categories = child.get("child_categories", [])
+                total_grandchild_categories += len(grandchild_categories)
+                
+                parent_info["children"].append(child_info)
+            
+            categories_data.append(parent_info)
+        
+        return {
+            "error": False,
+            "message": "Category counts retrieved successfully",
+            "data": {
+                "total_parent_categories": total_parent_categories,
+                "total_child_categories": total_child_categories,
+                "total_grandchild_categories": total_grandchild_categories,
+                "categories": categories_data
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error counting categories: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to count categories: {str(e)}",
+                "data": []
+            }
+        )
