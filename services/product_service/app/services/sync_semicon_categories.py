@@ -14,8 +14,9 @@ async def get_next_semicon_category_counter():
     max_id = 0
     for doc in docs:
         try:
-            current = int(doc.semicon_category_id.split("-")[1])
-            max_id = max(max_id, current)
+            if doc.semicon_category_id is not None:
+                current = int(doc.semicon_category_id.split("-")[1])
+                max_id = max(max_id, current)
         except Exception:
             continue
     return max_id + 1
@@ -73,7 +74,7 @@ def build_category(data: dict, scid_number: int) -> SemiconCategory:
     ]
 
     return SemiconCategory(
-        #id=uuid4(),
+        id=uuid4(),
         semicon_category_id=scid,
         digikey_category_id=data["CategoryId"],
         digikey_name=data["Name"],
@@ -93,7 +94,7 @@ async def fetch_and_sync_semicon_categories():
     url = "http://172.232.110.10:8000/api/digikey/categories"
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
             res = await client.get(url)
             res.raise_for_status()
             json_data = res.json()
@@ -119,10 +120,12 @@ async def fetch_and_sync_semicon_categories():
                 existing.modified_date = datetime.now(timezone.utc)
                 existing.child_categories = category_doc.child_categories
                 await engine.save(existing)
+                logger.info(f"✅ saved category: {existing.digikey_name}")
             else:
                 await engine.save(category_doc)
+                logger.info(f"✅ already category: {category_doc.digikey_name}")
                 scid_counter += 1
-
+            
             count += 1
 
         return {

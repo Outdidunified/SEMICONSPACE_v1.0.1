@@ -15,8 +15,9 @@ async def get_next_semicon_manufacturer_counter() -> int:
     max_id = 0
     for doc in docs:
         try:
-            current = int(doc.semicon_manufacturer_id.split("-")[1])
-            max_id = max(max_id, current)
+            if doc.semicon_manufacturer_id is not None:
+                current = int(doc.semicon_manufacturer_id.split("-")[1])
+                max_id = max(max_id, current)
         except Exception:
             continue
     return max_id + 1

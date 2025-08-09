@@ -4,16 +4,16 @@ from odmantic import Model, Field, EmbeddedModel
 from datetime import datetime
 
 
-# ======= Nested Models =======
+# ======= Nested models2 =======
 
 class BaseProductNumber(EmbeddedModel):
-    Id: int
-    Name: str
+    Id: Optional[int] = None
+    Name: Optional[str] = None
 
 
 class Series(EmbeddedModel):
-    Id: int
-    Name: str
+    Id: Optional[int] = None
+    Name: Optional[str] = None
 
 
 class Classifications(EmbeddedModel):
@@ -25,19 +25,19 @@ class Classifications(EmbeddedModel):
 
 
 class Manufacturer(EmbeddedModel):
-    Id: int
-    Name: str
-    semicon_manufacturer_id: str
+    Id: Optional[int] = None
+    Name: Optional[str] = None
+    semicon_manufacturer_id: Optional[str] = None
 
 
 class PackageType(EmbeddedModel):
-    Id: int
-    Name: str
+    Id: Optional[int] = None
+    Name: Optional[str] = None
 
 
 class Supplier(EmbeddedModel):
-    Id: int
-    Name: str
+    Id: Optional[int] = None
+    Name: Optional[str] = None
 
 
 class StandardPricing(EmbeddedModel):
@@ -80,7 +80,7 @@ class ChildCategory(EmbeddedModel):
 
 
 class Category(EmbeddedModel):
-    CategoryId: int
+    CategoryId: Optional[int] = None
     ParentId: int
     Name: str
     ProductCount: int
@@ -128,9 +128,9 @@ class SemiconProduct(Model):
     ProductStatus: ProductStatus
     modified_at: datetime = Field(default_factory=datetime.utcnow)
     modified_by: str
-    status: str = "active"
+    status: Optional[bool] = None
 
     model_config = {
-        "collection": "semicon_products_details",
+        "collection": "semicon_product_details",
         "arbitrary_types_allowed": True
     }
