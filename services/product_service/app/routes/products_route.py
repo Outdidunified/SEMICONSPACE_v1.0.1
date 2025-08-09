@@ -471,14 +471,13 @@ async def get_product_by_id(product_id: str):
                 "VendorProducts": details.get("VendorProducts", []),
                 "ProductVariants": details.get("ProductVariants", [])
             }
-    }
-}
+            }
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching product {product_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
+             print(f"Error fetching product {product_id}: {str(e)}")
+    raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
     
 @router.get("/search/advanced")
 async def search_products(
