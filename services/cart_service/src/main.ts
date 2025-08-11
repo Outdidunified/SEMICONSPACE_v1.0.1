@@ -61,7 +61,7 @@ async function bootstrap() {
           retry: { initialRetryTime: 100, retries: 5 },
         },
         consumer: {
-          groupId: 'cart-consumer-group',
+          groupId: 'payment-consumer-group',
           allowAutoTopicCreation: true,
           maxWaitTimeInMs: 5000,
           retry: { retries: 3 },

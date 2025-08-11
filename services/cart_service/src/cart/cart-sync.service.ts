@@ -25,6 +25,25 @@ export class CartSyncService {
 
       for (const key of keys) {
         const userId = key.split(":")[1];
+        
+        // Check if this user has recently completed payment (cart should not be synced)
+        const paymentCompletedKey = `payment_completed:${userId}`;
+        const paymentCompleted = await redisClient.get(paymentCompletedKey);
+        
+        if (paymentCompleted) {
+          this.logger.log(`💳 Skipping sync for user ${userId} - payment recently completed`);
+          
+          // Clean up the payment completed flag and clear Redis cart
+          await redisClient.del(paymentCompletedKey);
+          await redisClient.del(key);
+          
+          // Ensure PostgreSQL is also cleared
+          await this.cartItemRepo.delete({ userId });
+          
+          this.logger.log(`🧹 Cart cleared for user ${userId} after payment completion`);
+          continue;
+        }
+
         const cart = await redisClient.hGetAll(key);
 
         const entries = Object.entries(cart);
@@ -42,11 +61,9 @@ export class CartSyncService {
                 return null;
               }
 
-              const parsed = JSON.parse(jsonData as string); // ✅ Type assertion
-              console.log("🔎 Parsed Redis Data:", parsed);
-
-              const productId =
-                parsed.productId || parsed.semicon_part_number || parsed.id;
+              const parsed = JSON.parse(jsonData as string);
+              
+              const productId = parsed.productId || parsed.semicon_part_number || parsed.id;
               const quantity = parseInt(parsed.quantity, 10);
 
               if (!productId || isNaN(quantity) || quantity <= 0) {
@@ -60,24 +77,24 @@ export class CartSyncService {
                 userId,
                 productId,
                 quantity,
-                name: parsed?.name,
-                price: parsed?.price,
-                description: parsed?.description,
-                manufacturerName: parsed?.manufacturerName, // ✅ FIXED
-                manufacturerPartNumber: parsed?.manufacturerPartNumber, // ✅ FIXED
-                datasheetUrl: parsed?.datasheetUrl, // ✅ FIXED
-                imageUrl: parsed?.imageUrl, // ✅ FIXED
-                createdDate: parsed?.createdDate
-                  ? new Date(parsed.createdDate)
-                  : new Date(),
+                name: parsed.name || '',
+                price: parsed.price || 0,
+                description: parsed.description || '',
+                manufacturerName: parsed.manufacturerName || '',
+                manufacturerPartNumber: parsed.manufacturerPartNumber || '',
+                datasheetUrl: parsed.datasheetUrl || '',
+                imageUrl: parsed.imageUrl || '',
+                createdBy: userId,
+                modifiedBy: userId,
+                createdDate: parsed.createdDate ? new Date(parsed.createdDate) : new Date(),
                 modifiedDate: new Date(),
-                status: parsed?.status ?? true,
+                status: parsed.status ?? true,
               };
 
               return item;
             } catch (err) {
               this.logger.warn(
-                `⚠️ Skipping invalid cart item for product ${productIdStr}: ${err.message}`
+                `⚠️ Skipping invalid cart item: ${err.message}`
               );
               return null;
             }
@@ -90,8 +107,6 @@ export class CartSyncService {
         if (items.length > 0) {
           await this.cartItemRepo.save(items);
           this.logger.log(`✅ Synced ${items.length} items for user ${userId}`);
-        } else {
-          this.logger.warn(`⚠️ No valid items to sync for user ${userId}`);
         }
       }
     } catch (error) {

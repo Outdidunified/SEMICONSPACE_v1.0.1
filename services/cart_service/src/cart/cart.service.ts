@@ -198,58 +198,114 @@ async handleGetCartItems(userId: string): Promise<any> {
   }
 }
 
-async handleRemoveFromCart(userId: string, productId: string): Promise<any> {
-  const redis = this.redisService.getClient();
-  const redisKey = `cart:${userId}`;
+  async handleRemoveFromCart(userId: string, productId: string): Promise<any> {
+    const redis = this.redisService.getClient();
+    const redisKey = `cart:${userId}`;
 
-  if (!userId || !productId) {
-    return {
-      statusCode: 400,
-      error: true,
-      message: 'Invalid userId or productId',
-    };
-  }
-
-  try {
-    // ✅ Step 1: Remove from Redis
-    await redis.hDel(redisKey, productId);
-
-    // ✅ Step 2: Remove from DB
-    const existingItem = await this.cartRepository.findOne({
-      where: { userId, productId }, // productId is now string
-    });
-    if (existingItem) {
-      await this.cartRepository.remove(existingItem);
+    if (!userId || !productId) {
+      return {
+        statusCode: 400,
+        error: true,
+        message: 'Invalid userId or productId',
+      };
     }
 
-    // ✅ Step 3: Emit Kafka
-    this.kafkaClient.emit('cart.item.removed', {
-      userId,
-      productId,
-      status: 'success',
-      timestamp: new Date().toISOString(),
-    });
+    try {
+      // ✅ Step 1: Remove from Redis
+      await redis.hDel(redisKey, productId);
 
-    return {
-      statusCode: 200,
-      error: false,
-      message: 'Item removed from cart',
-      data: { userId, productId },
-    };
-  } catch (error) {
-    this.kafkaClient.emit('cart.item.removed.error', {
-      userId,
-      productId,
-      status: 'error',
-      error: error.message,
-      timestamp: new Date().toISOString(),
-    });
+      // ✅ Step 2: Remove from DB
+      const existingItem = await this.cartRepository.findOne({
+        where: { userId, productId }, // productId is now string
+      });
+      if (existingItem) {
+        await this.cartRepository.remove(existingItem);
+      }
 
-    return {
-      statusCode: 500,
-      error: true,
-      message: error.message || 'Failed to remove item from cart',
-    };
+      // ✅ Step 3: Emit Kafka
+      this.kafkaClient.emit('cart.item.removed', {
+        userId,
+        productId,
+        status: 'success',
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        statusCode: 200,
+        error: false,
+        message: 'Item removed from cart',
+        data: { userId, productId },
+      };
+    } catch (error) {
+      this.kafkaClient.emit('cart.item.removed.error', {
+        userId,
+        productId,
+        status: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        statusCode: 500,
+        error: true,
+        message: error.message || 'Failed to remove item from cart',
+      };
+    }
+  }
+
+  async clearCart(userId: string): Promise<any> {
+    const redis = this.redisService.getClient();
+    const redisKey = `cart:${userId}`;
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        error: true,
+        message: 'Invalid userId',
+      };
+    }
+
+    try {
+      // ✅ Step 1: Remove from Redis
+      await redis.del(redisKey);
+
+      // ✅ Step 2: Remove all items from DB for this user
+      const existingItems = await this.cartRepository.find({
+        where: { userId },
+      });
+      
+      if (existingItems.length > 0) {
+        await this.cartRepository.remove(existingItems);
+      }
+
+      // ✅ Step 3: Emit Kafka
+      this.kafkaClient.emit('cart.cleared', {
+        userId,
+        itemsCleared: existingItems.length,
+        status: 'success',
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        statusCode: 200,
+        error: false,
+        message: `Cart cleared successfully. ${existingItems.length} items removed.`,
+        data: { userId, itemsCleared: existingItems.length },
+      };
+    } catch (error) {
+      this.kafkaClient.emit('cart.cleared.error', {
+        userId,
+        status: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        statusCode: 500,
+        error: true,
+        message: error.message || 'Failed to clear cart',
+      };
+    }
   }
 }
 
@@ -257,4 +313,4 @@ async handleRemoveFromCart(userId: string, productId: string): Promise<any> {
 
 
 
-}
+
