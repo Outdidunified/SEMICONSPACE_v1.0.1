@@ -27,7 +27,7 @@ async def sync_digikey_product(payload: dict):
     if not query:
         raise HTTPException(status_code=400, detail={"status": "failure", "message": "Query is required"})
 
-    async with httpx.AsyncClient(timeout=180) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
         search_url = f"{DIGIKEY_BASE_URL}/search/keyword"
         search_resp = await client.post(search_url, json={"query": query})
         if search_resp.status_code != 200:
@@ -606,6 +606,12 @@ async def search_and_get_details(query: str):
                 *(safe_fetch_details(pn, client) for pn in mongo_part_numbers),
                 return_exceptions=False
             )
+            if mongo_details and len(mongo_details) > 0:
+                return {
+                    "message": "Products retrieved successfully from local database",
+                    "count": len(mongo_details),
+                    "data": mongo_details
+                }
 
             # 3. DigiKey sync
             digi_url = "http://172.232.110.10:8003/product/sync/digikey"
