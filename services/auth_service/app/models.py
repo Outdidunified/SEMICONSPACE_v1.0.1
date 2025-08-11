@@ -20,6 +20,7 @@ class User(Base):
     created_by = Column(String, nullable=False)
     modified_by = Column(String, nullable=True)
     modified_at = Column(DateTime, nullable=True)
+    status = Column(Boolean, default=True) 
 
 
 class UserRole(Base):
