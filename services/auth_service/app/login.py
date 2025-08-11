@@ -70,7 +70,9 @@ async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(g
         detail_msg = "Invalid Email credentials" if is_email else "Invalid Mobile credentials"
         logger.warning(f"❌ Login failed: {detail_msg} for identifier: {identifier}")
         raise HTTPException(status_code=404, detail=detail_msg)
-
+    if not getattr(user, "status", False):
+        logger.warning(f"❌ User account is inactive: {identifier}")
+        raise HTTPException(status_code=403, detail="User account is inactive")
     # 🔄 Changed this line for plain-text comparison
     if request.password != str(user.password):
         logger.warning(f"❌ Incorrect password attempt for user: {identifier}")
