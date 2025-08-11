@@ -76,6 +76,11 @@ async def admin_login(request: schemas.LoginRequest, db: AsyncSession = Depends(
     if not user:
         logger.warning(f"❌ Admin login failed: Invalid credentials for identifier: {identifier}")
         raise HTTPException(status_code=404, detail="Invalid admin credentials")
+    
+    if not getattr(user, "status", False):
+        logger.warning(f"❌ User account is inactive: {identifier}")
+        raise HTTPException(status_code=403, detail="User account is inactive")
+    # 🔄 Changed this line for plain-text comparison
 
     # Check password against user table
     if request.password != str(user.password):
