@@ -22,26 +22,34 @@ export class PaymentService {
 
     constructor(private readonly kafkaProducer: KafkaProducerService) { }
 
-   async initiatePayment(order: any) {
-  this.logger.log(' Initiating payment for order:', order);
+  async initiatePayment(order: any) {
+  this.logger.log('Initiating payment for order:', order);
 
-  const total = Number(order.total);
+  // ✅ Ensure total is in rupees
+  let totalInRupees = Number(order.total);
 
-  if (!total || total < 1) {
-    this.logger.error(` Invalid order total received: ${order.total}`);
+  // If the total looks like paise (big number), convert to rupees
+  if (totalInRupees > 100000) {
+    totalInRupees = totalInRupees / 100;
+  }
+
+  if (!totalInRupees || totalInRupees < 1) {
+    this.logger.error(`Invalid order total received: ${order.total}`);
     throw new Error('Invalid order total: must be at least ₹1');
   }
 
-  this.logger.log(` Creating Razorpay order for amount ₹${total} (${total * 100} paise)`);
+  const amountInPaise = Math.round(totalInRupees * 100);
+
+  this.logger.log(`Creating Razorpay order for ₹${totalInRupees} (${amountInPaise} paise)`);
 
   try {
     const rzpOrder = await razorpay.orders.create({
-      amount: Math.round(total * 100), // in paise
+      amount: amountInPaise, // ✅ integer in paise
       currency: 'INR',
-      receipt: order.orderId,
+      receipt: String(order.orderId),
     });
 
-    this.logger.log(` Razorpay order created: ${rzpOrder.id}`);
+    this.logger.log(`Razorpay order created: ${rzpOrder.id}`);
 
     await Payment.create({
       orderId: order.orderId,
@@ -49,28 +57,31 @@ export class PaymentService {
       razorpayOrderId: rzpOrder.id,
       razorpayPaymentId: '',
       status: 'pending',
-      total,
+      total: totalInRupees, // ✅ store in rupees
       items: order.items.map((item) => ({
         productId: item.productId,
         qty: item.qty,
-        totalprice: item.totalPrice ?? item.totalprice, // handle case diff
+        totalprice:
+          item.totalPrice ??
+          (item.price ? item.price * item.qty / 100 : 0), // convert paise → rupees if needed
       })),
     });
 
-    this.logger.log(` Payment record created for order: ${order.orderId}`);
+    this.logger.log(`Payment record created for order: ${order.orderId}`);
 
     return {
       razorpayOrderId: rzpOrder.id,
       orderId: order.orderId,
       userId: order.userId,
-      amount: total,
+      amount: totalInRupees,
       currency: 'INR',
     };
   } catch (err: any) {
-    this.logger.error(' Razorpay order creation failed:', err.message, err);
+    this.logger.error('Razorpay order creation failed:', err.message, err);
     throw new Error(err?.description || err.message || 'Failed to create Razorpay order');
   }
 }
+
 
     async confirmPayment(dto: ConfirmPaymentDto) {
         const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = dto;
