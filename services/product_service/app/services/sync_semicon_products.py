@@ -283,10 +283,11 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
     await db.save(listing_product)
     variant_ids = []
     # -------- PRODUCT VARIANTS & PARAMETERS & PRICING --------
-    spvid = await get_next_variant_counter(db)
+    
     parameter_counter = await get_next_parameter_counter(db)
     for variation_idx, variation in enumerate(digikey_data.get("productVariations", [])):
         # Create parameters specific to this variant
+        spvid = await get_next_variant_counter(db)
         variant_params = []
         for idx, param in enumerate(variation.get("parameters", digikey_data.get("parameters", []))):
             spara_id = f"SPARAID-{parameter_counter}"
@@ -323,7 +324,6 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
         await db.save(listing_product)
 
         # Create variant document
-        spvid += 1
         ssidk=f"SPVID-{spvid}"
         vendor_part_number = variation.get("digiKeyProductNumber") or variation.get("DigiKeyProductNumber") or variation.get("productNumber") or "UNKNOWN"
         supplier_id, supplier_name = parse_manufacturer(variation.get("Supplier") or digikey_data.get("Manufacturer"))
@@ -375,5 +375,5 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
         "subcategory": sb,
      }
 
-    await send_event(topic="product.added", value=all_data_dict)
+    await send_event(topic="product.added1", value=all_data_dict)
     return listing_product 

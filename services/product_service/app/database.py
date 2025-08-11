@@ -10,4 +10,4 @@ if not mongo_url:
     raise ValueError("MONGODB_URL environment variable is not set")
 
 client = AsyncIOMotorClient(mongo_url, uuidRepresentation="standard")
-engine = AIOEngine(client=client, database="semicon_mock")
+engine = AIOEngine(client=client, database="semicon_mocksemicon_product_service_copy")
