@@ -22,6 +22,7 @@ async function createSchemaIfNotExists() {
             { name: 'category', type: 'string', facet: true },
             { name: 'manufacturer', type: 'string', facet: true },
             { name: 'subcategory', type: 'string', facet: true },
+            { name: 'semicon_part_number', type: 'string', facet: true },
           ],
         });
         console.log('✅ Created new Typesense collection "products".');

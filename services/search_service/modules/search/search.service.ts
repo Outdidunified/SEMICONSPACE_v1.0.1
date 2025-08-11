@@ -11,9 +11,15 @@ export class SearchService {
    */
   async createOrUpdateProduct(product: any) {
     try {
-      // Ensure required fields exist
-      if (!product.productname || !product.category || !product.manufacturer || !product.subcategory) {
-        this.logger.warn('⚠️ Missing required product fields. Skipping save to Typesense.');
+      // Ensure required fields exist including semicon_part_number
+      if (
+        !product.productname ||
+        !product.category ||
+        !product.manufacturer ||
+        !product.subcategory ||
+        !product.semicon_part_number
+      ) {
+        this.logger.warn('⚠️ Missing required product fields including semicon_part_number. Skipping save to Typesense.');
         return;
       }
 
@@ -23,6 +29,7 @@ export class SearchService {
         category: product.category,
         manufacturer: product.manufacturer,
         subcategory: product.subcategory,
+        semicon_part_number: product.semicon_part_number,
       };
 
       // Store in Typesense
@@ -66,7 +73,7 @@ export class SearchService {
     try {
       const searchParams = {
         q: query,
-        query_by: 'productname,category,manufacturer,subcategory',
+        query_by: 'productname,category,manufacturer,subcategory,semicon_part_number',
         prefix: true,
         num_typos: 6,
         per_page: 250, // maximum allowed
@@ -91,7 +98,7 @@ export class SearchService {
    * Generate unique ID for Typesense
    */
   private generateId(product: any): string {
-    return `${product.productname}-${product.manufacturer}`
+    return `${product.productname}-${product.manufacturer}-${product.semicon_part_number}`
       .toLowerCase()
       .replace(/\s+/g, '-');
   }
