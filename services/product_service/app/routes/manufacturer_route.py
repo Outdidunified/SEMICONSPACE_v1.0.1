@@ -5,6 +5,7 @@ from typing import Optional
 from app.database import engine, client
 from app.models.manufacturers_models import SemiconManufacturer
 from app.models.semicon_products_details import SemiconProduct
+from app.models.semicon_products import SemiconProduct as SemiconProducts
 from app.schemas.manufacturers_schema import (
     SemiconManufacturerCreateSchema,
     SemiconManufacturerUpdateSchema,
@@ -232,3 +233,53 @@ async def get_manufacturer_counts():
                 "data": []
             }
         )
+@router.get("/manufacturers/get-active", tags=["Semicon Manufacturers"])
+async def get_manufacturers_with_products():
+    """
+    Get all manufacturers that have at least one active product
+    """
+    # Step 1: Fetch only active products
+    collection = engine.get_collection(SemiconProducts)
+    print(collection)
+    print(1)
+    mongo_matches = await collection.find({"status": True}).to_list(length=None)
+    #print(mongo_matches)
+
+
+    # Step 2: Extract unique manufacturer IDs
+    manufacturer_ids = {
+        doc.get("semicon_manufacturer_id")
+        for doc in mongo_matches
+        if doc.get("semicon_manufacturer_id")
+    }
+    
+    print(2)
+    if not manufacturer_ids:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "failure",
+                "message": "No manufacturers with active products found"
+            }
+        )
+    # Step 3: Fetch manufacturer details using raw MongoDB query
+    manufacturer_collection = engine.get_collection(SemiconManufacturer)
+    manufacturer_docs = await manufacturer_collection.find({
+        "semicon_manufacturer_id": {"$in": list(manufacturer_ids)}
+    }).to_list(length=None)
+    
+    # Convert raw documents to SemiconManufacturer objects
+    manufacturers = []
+    for doc in manufacturer_docs:
+        try:
+            manufacturer = SemiconManufacturer.model_validate(doc)
+            manufacturers.append(manufacturer)
+        except Exception as e:
+            logger.warning(f"Skipping invalid manufacturer document: {e}")
+    print(3)
+
+    return {
+        "status": "success",
+        "count": len(manufacturers),
+        "data": [m.model_dump() for m in manufacturers]
+    }

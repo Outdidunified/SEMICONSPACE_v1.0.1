@@ -646,7 +646,29 @@ async def search_and_get_details(query: str):
             # 6. Merge results
             all_results = mongo_details + digi_details
             all_results = [r for r in all_results if r]  # remove None
-
+            if not all_results:
+                fallback_query = {
+                    "$or": [
+                        {"name": {"$regex": query, "$options": "i"}},
+                        {"description": {"$regex": query, "$options": "i"}},
+                        {"manufacturer_name": {"$regex": query, "$options": "i"}},
+                        {"manufacturerPartNumber": {"$regex": query, "$options": "i"}},
+                        {"Category.Name": {"$regex": query, "$options": "i"}},
+                        {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}}
+                    ]
+                }
+                    
+                mongo_matches = await collection.find(fallback_query).to_list(length=None)
+                mongo_part_numbers = {
+                    doc.get("semicon_part_number")
+                    for doc in mongo_matches if doc.get("semicon_part_number")
+                 }
+                mongo_details = await asyncio.gather(
+                    *(safe_fetch_details(pn, client) for pn in mongo_part_numbers),
+                    return_exceptions=False
+                )
+            all_results = mongo_details+ digi_details
+            all_results = [r for r in all_results if r]
             if not all_results:
                 raise HTTPException(status_code=404, detail="No products found")
 
@@ -659,4 +681,4 @@ async def search_and_get_details(query: str):
     except httpx.ConnectError as e:
         raise HTTPException(status_code=502, detail=f"Connection failed: {str(e)}")
     except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Request error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Request error: {str(e)}")  
