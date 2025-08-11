@@ -10,11 +10,12 @@ class SemiconProduct(Model):
     image_url: Optional[str] = None
     datasheet_url: Optional[str] = None
     quantity_available: Optional[int] = None
-    unit_price: Optional[float] = None
-    currency: Optional[str] = None
+    UnitPrice: Optional[float] = None
+    currency: Optional[str] = "USD"
     manufacturerPartNumber: Optional[str] = None
     vendor_details: List[str] = Field(default_factory=list)
     manufacturer_name: Optional[str] = None
+    semicon_manufacturer_id: Optional[str] = None
     semicon_part_number: Optional[str] = Field(default=None, unique=True)
     semicon_category_id: Optional[str] = None
     semicon_child_category_id: Optional[str] = None

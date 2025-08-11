@@ -19,7 +19,7 @@ class SemiconProductVariantPricing(Model):
     created_date: datetime = Field(default_factory=datetime.utcnow)
     modified_by: str
     modified_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str
+    status: Optional[bool] = None
     semicon_product_variant_pricing_id: str
     semicon_product_variant_id: str
 

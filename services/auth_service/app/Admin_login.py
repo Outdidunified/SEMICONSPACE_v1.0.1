@@ -46,7 +46,11 @@ def create_token(data: dict) -> str:
     #to_encode["exp"] = expire
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 @router.post("/auth/Admin_login", response_model=schemas.TokenResponse)
-async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
+async def admin_login(request: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Admin login endpoint that checks credentials against the user table
+    Specifically for admin users (role_id = 1)
+    """
     logger = logging.getLogger(__name__)
     
     identifier = request.identifier.strip()
@@ -60,53 +64,58 @@ async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(g
     if is_mobile:
         identifier = normalize_mobile(identifier)
 
+    # Query admin user with allowed role_ids (1, 3, 4, 5)
     result = await db.execute(
         select(models.User).where(
-            (models.User.email == identifier) | (models.User.phone == identifier)
+            ((models.User.email == identifier) | (models.User.phone == identifier)) &
+            (models.User.role_id.in_([1, 3, 4, 5]))
         )
     )
     user = result.scalar_one_or_none()
 
     if not user:
-        detail_msg = "Invalid Email credentials" if is_email else "Invalid Mobile credentials"
-        logger.warning(f"❌ Login failed: {detail_msg} for identifier: {identifier}")
-        raise HTTPException(status_code=404, detail=detail_msg)
+        logger.warning(f"❌ Admin login failed: Invalid credentials for identifier: {identifier}")
+        raise HTTPException(status_code=404, detail="Invalid admin credentials")
+    
+    if not getattr(user, "status", False):
+        logger.warning(f"❌ User account is inactive: {identifier}")
+        raise HTTPException(status_code=403, detail="User account is inactive")
+    # 🔄 Changed this line for plain-text comparison
 
-    # 🔒 Check password (securely hashed version preferred)
+    # Check password against user table
     if request.password != str(user.password):
-        logger.warning(f"❌ Incorrect password attempt for user: {identifier}")
+        logger.warning(f"❌ Incorrect password attempt for admin: {identifier}")
         raise HTTPException(status_code=401, detail="Incorrect password")
 
-    # 🔒 Check if provided role_id matches user’s actual role_id
-    if request.role_id != user.role_id:
-        logger.warning(f"❌ Role mismatch: User role {user.role_id} != Provided {request.role_id}")
-        raise HTTPException(status_code=403, detail="Unauthorized access: role mismatch")
-
+    # Create JWT token for admin
     token = create_token({
         "userId": str(user.userId),
         "role": user.role,
         "role_id": user.role_id,
-        "email": user.email
+        "email": user.email,
+        "type": "admin"
     })
 
-    logger.info(f"✅ User logged in successfully: {identifier} (Role ID: {user.role_id})")
+    logger.info(f"✅ Admin logged in successfully: {identifier} (Role ID: {user.role_id})")
 
+    # Send Kafka event for admin login
     try:
         await kafka_producer.send_event(
-            "user.loggedin",
+            "admin.loggedin",
             {
-                "action": "login",
+                "action": "admin_login",
                 "success": True,
                 "userId": str(user.userId),
                 "email": user.email,
                 "phone": user.phone,
                 "role": user.role,
                 "role_id": user.role_id,
+                "type": "admin",
                 "time": datetime.now(timezone.utc).isoformat(),
             },
         )
     except Exception as e:
-        logger.error(f"⚠️ Kafka login event error for {user.email}: {e}")
+        logger.error(f"⚠️ Kafka admin login event error for {user.email}: {e}")
 
     return {
         "access_token": token,
@@ -117,5 +126,6 @@ async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(g
         "email": user.email,
         "phone": user.phone,
         "first_name": user.first_name,
-        "last_name": user.last_name  # ✅ return frontend target page
+        "last_name": user.last_name,
+        "type": "admin"
     }

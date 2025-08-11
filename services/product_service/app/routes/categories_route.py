@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status,Path
 from app.services.sync_semicon_categories import fetch_and_sync_semicon_categories
 from app.schemas.categories_schema import SemiconCategoryCreateSchema, SemiconCategoryUpdateSchema
 from app.models.categories_models import SemiconCategory
@@ -6,7 +6,10 @@ from app.database import engine
 from typing import List, Optional
 from datetime import datetime
 from fastapi.encoders import jsonable_encoder
+#from app.models.semicon_products import SemiconProducts
 from odmantic.query import QueryExpression
+from app.models.semicon_products import SemiconProduct
+from logging import getLogger as logger
 
 router = APIRouter(prefix="/product")
 
@@ -226,3 +229,235 @@ async def get_child_category_by_id(child_category_id: str):
                 "data": []
             }
         )
+@router.get("/analytics/count/categories", tags=["Analytics"])
+async def get_category_counts():
+    """Get counts of all categories and subcategories with names"""
+    try:
+        # Access the raw MongoDB collection to bypass odmantic validation
+        collection = engine.get_collection(SemiconCategory)
+        
+        # Fetch all categories
+        categories = await collection.find().to_list(None)
+        
+        total_parent_categories = len(categories)
+        total_child_categories = 0
+        total_grandchild_categories = 0
+        
+        categories_data = []
+        
+        for category in categories:
+            parent_info = {
+                "name": category.get("digikey_name", "Unknown"),
+                "parent_category_id": category.get("semicon_category_id", ""),
+                "child_count": len(category.get("child_categories", [])),
+                "children": []
+            }
+            
+            # Count child categories
+            child_categories = category.get("child_categories", [])
+            total_child_categories += len(child_categories)
+            
+            # Process child categories
+            for child in child_categories:
+                child_info = {
+                    "name": child.get("digikey_child_name", "Unknown"),
+                    "child_category_id": child.get("semicon_child_category_id", ""),
+                    "grandchild_count": len(child.get("child_categories", []))
+                }
+                
+                # Count grandchild categories
+                grandchild_categories = child.get("child_categories", [])
+                total_grandchild_categories += len(grandchild_categories)
+                
+                parent_info["children"].append(child_info)
+            
+            categories_data.append(parent_info)
+        
+        return {
+            "error": False,
+            "message": "Category counts retrieved successfully",
+            "data": {
+                "total_parent_categories": total_parent_categories,
+                "total_child_categories": total_child_categories,
+                "total_grandchild_categories": total_grandchild_categories,
+                "categories": categories_data
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error counting categories: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to count categories: {str(e)}",
+                "data": []
+            }
+        )
+@router.get("/categories/getproducts/{category_id}", tags=["Semicon Categories"])
+async def get_products_by_category(category_id: str):
+    products = await engine.find(
+        SemiconProduct,
+        SemiconProduct.semicon_category_id == category_id
+    )
+
+    if not products:
+        raise HTTPException(
+            status_code=404,
+            detail={"status": "failure", "message": "No products found for this category"}
+        )
+
+    return {
+        "status": "success",
+        "data": [product.model_dump() for product in products]
+    }
+# @router.get("/semicon_child_categories/getproducts/{semicon_child_category_id}", tags=["Semicon Categories"])
+# async def get_products_by_child_category(semicon_child_category_id: str):
+#     products = await engine.find(
+#         SemiconProduct,
+#         SemiconProduct.semicon_child_category_id == semicon_child_category_id
+#     )
+
+#     if not products:
+#         raise HTTPException(
+#             status_code=404,
+#             detail={"status": "failure", "message": "No products found for this category"}
+#         )
+
+#     return {
+#         "status": "success",
+#         "data": [product.model_dump() for product in products]
+#     }
+@router.get("/categories/{category_id}/subcategories/{child_category_id}/products", tags=["Semicon Categories"])
+async def get_products_by_category_and_subcategory(category_id: str, child_category_id: str):
+    """
+    Get products where BOTH category and subcategory match
+    """
+    products = await engine.find(
+        SemiconProduct,
+        {
+            "semicon_category_id": category_id,
+            "semicon_child_category_id": child_category_id
+        }
+    )
+
+    if not products:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "failure",
+                "message": "No products found for this category & subcategory"
+            }
+        )
+
+    return {
+        "status": "success",
+        "data": [product.model_dump() for product in products]
+    }
+@router.get("/get/categories/active", tags=["Semicon Categories"])
+async def get_categories_with_active_products():
+    """
+    Get all categories that have at least one active product
+    """
+    print("Fetching categories with active products...")    
+    # Step 1: Fetch only active products
+    product_collection = engine.get_collection(SemiconProduct)
+
+    print(f"p:{product_collection}")
+    mongo_matches = await product_collection.find({"status": True}).to_list(length=None)
+
+    # Step 2: Extract unique category IDs
+    category_ids = {
+        doc.get("semicon_category_id")
+        for doc in mongo_matches
+        if doc.get("semicon_category_id")
+    }
+
+
+    if not category_ids:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "failure",
+                "message": "No categories with active products found"
+            }
+        )
+
+    # Step 3: Fetch category details using raw MongoDB query
+    category_collection = engine.get_collection(SemiconCategory)
+    category_docs = await category_collection.find({
+        "semicon_category_id": {"$in": list(category_ids)},
+        "status": True  # optional, if you only want active categories
+    }).to_list(length=None)
+
+    # Step 4: Convert raw documents to SemiconCategory objects
+    categories = []
+    for doc in category_docs:
+        try:
+            category = SemiconCategory.model_validate(doc)
+            categories.append(category)
+        except Exception as e:
+            logger.warning(f"Skipping invalid category document: {e}")
+
+    return {
+        "status": "success",
+        "count": len(categories),
+        "data": [c.model_dump() for c in categories]
+    }
+
+@router.get("/categories/{category_id}/active-subcategories", tags=["Semicon Categories"])
+async def get_active_subcategories_for_category(category_id: str):
+    """
+    Get active subcategories from a category document 
+    that have at least one active product.
+    """
+    # Step 1: Find all active products in this category
+    product_collection = engine.get_collection(SemiconProduct)
+    products = await product_collection.find({
+        "semicon_category_id": category_id,
+        "status": True
+    }).to_list(length=None)
+
+    if not products:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "failure",
+                "message": f"No active products found for category {category_id}"
+            }
+        )
+
+    # Step 2: Extract subcategory IDs from products
+    subcategory_ids_with_products = {
+        p.get("semicon_child_category_id")
+        for p in products
+        if p.get("semicon_child_category_id")
+    }
+
+    # Step 3: Fetch the category document
+    category_collection = engine.get_collection(SemiconCategory)
+    category_doc = await category_collection.find_one({
+        "semicon_category_id": category_id
+    })
+
+    if not category_doc:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "failure",
+                "message": f"Category {category_id} not found"
+            }
+        )
+
+    # Step 4: Filter child categories by IDs from products and status=True
+    active_subcategories = [
+        subcat for subcat in category_doc.get("child_categories", [])
+        if subcat.get("semicon_child_category_id") in subcategory_ids_with_products
+        and subcat.get("status") is True
+    ]
+
+    return {
+        "status": "success",
+        "count": len(active_subcategories),
+        "data": active_subcategories
+    }

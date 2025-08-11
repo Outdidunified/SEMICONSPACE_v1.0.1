@@ -2,6 +2,7 @@ import uuid
 from odmantic import Model, EmbeddedModel, Field
 from datetime import datetime
 from typing import List
+from typing import Optional
 
 class Supplier(EmbeddedModel):
     id: int
@@ -12,7 +13,9 @@ class parameter(EmbeddedModel):
     value_text: str
 
 class VendorProduct(Model):
+    
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_field=True)
+    semicon_product_variant_id: str
     vendor_part_number: str
     digikey_product_number: str
     marketplace: bool
@@ -26,7 +29,7 @@ class VendorProduct(Model):
     created_date: datetime = Field(default_factory=datetime.utcnow)
     modified_by: str
     modified_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str
+    status: Optional[bool] = None
     parameters: List[parameter] 
     semicon_product_variant_pricing_id: List[str] = Field(default_factory=list)
 

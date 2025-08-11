@@ -5,11 +5,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Op, fn, col, literal, Sequelize } from 'sequelize'; // Top of the file
+import { Op, fn, col, literal, Sequelize } from 'sequelize';
 import { ManagerOrder } from './managerorder.model';
 import { UpdateManagerOrderDto } from './dto/update-managerorder.dto';
-import axios from 'axios';
-// This service handles order management operations, including fetching and updating orders.
 
 @Injectable()
 export class ManagerOrderService {
@@ -27,64 +25,35 @@ export class ManagerOrderService {
     if (!uuidRegex.test(uuid)) {
       throw new HttpException(
         {
-          statusCode: 400,
+          statusCode: HttpStatus.BAD_REQUEST,
           error: true,
           message: `Invalid ${label}`,
         },
-        400,
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
 
-  private async fetchUserProfile(userId: string) {
-    try {
-      const profileRes = await axios.post(
-        `http://172.232.110.10:8002/user/profile/get`,
-        { userId },
-      );
-      const profile = profileRes.data?.profile;
-      if (!profile) return null;
+ async findAll(): Promise<any> {
+  const data = await this.orderModel.findAll({
+    where: { status: { [Op.ne]: 'pending' } }, // exclude pending
+  });
 
-      return {
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        email: profile.email,
-        phone: profile.phone,
-      };
-    } catch (err) {
-      this.logger.warn(`Unable to fetch profile for user ${userId}: ${err.message}`);
-      return null;
-    }
-  }
-
-  async findAll(): Promise<any> {
-    const data = await this.orderModel.findAll();
-
-    if (!data || data.length === 0) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.NOT_FOUND,
-          error: true,
-          message: 'No orders found',
-        },
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    const enriched = await Promise.all(
-      data.map(async (order) => ({
-        ...order.toJSON(),
-        userProfile: await this.fetchUserProfile(order.userId),
-      })),
+  if (!data || data.length === 0) {
+    throw new HttpException(
+      { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'No orders found' },
+      HttpStatus.NOT_FOUND,
     );
-
-    return {
-      statusCode: HttpStatus.OK,
-      error: false,
-      message: 'Orders fetched successfully',
-      data: enriched,
-    };
   }
+
+  return {
+    statusCode: HttpStatus.OK,
+    error: false,
+    message: 'Orders fetched successfully',
+    data: data.map(order => order.toJSON()),
+  };
+}
+
 
   async findOne(orderId: string): Promise<any> {
     this.validateUUID(orderId, 'Order ID');
@@ -92,25 +61,16 @@ export class ManagerOrderService {
     const order = await this.orderModel.findByPk(orderId);
     if (!order) {
       throw new HttpException(
-        {
-          statusCode: 404,
-          error: true,
-          message: 'Order not found',
-        },
-        404,
+        { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'Order not found' },
+        HttpStatus.NOT_FOUND,
       );
     }
 
-    const userProfile = await this.fetchUserProfile(order.userId);
-
     return {
-      statusCode: 200,
+      statusCode: HttpStatus.OK,
       error: false,
       message: 'Order fetched successfully',
-      data: {
-        ...order.toJSON(),
-        userProfile,
-      },
+      data: order.toJSON(),
     };
   }
 
@@ -119,13 +79,27 @@ export class ManagerOrderService {
 
   const existingOrder = await this.orderModel.findByPk(orderId);
   if (!existingOrder) {
-    throw new HttpException({ statusCode: 404, error: true, message: 'Order not found' }, 404);
+    throw new HttpException(
+      { statusCode: HttpStatus.NOT_FOUND, error: true, message: 'Order not found' },
+      HttpStatus.NOT_FOUND,
+    );
+  }
+
+  // ✅ Prevent updating to same status
+  if (dto.status && existingOrder.status?.toLowerCase() === dto.status.toLowerCase()) {
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Order is already ${existingOrder.status.toLowerCase()}`,
+      },
+      HttpStatus.BAD_REQUEST,
+    );
   }
 
   const now = new Date();
 
-  // ✅ Automatically track time when status is updated
-  switch (dto.status) {
+  switch (dto.status?.toLowerCase()) {
     case 'shipped':
       existingOrder.shippedAt = now;
       break;
@@ -139,19 +113,23 @@ export class ManagerOrderService {
   }
 
   if (dto.status) existingOrder.status = dto.status;
-  if (dto.totalAmount) existingOrder.total = dto.totalAmount;
+  if (dto.totalAmount !== undefined) existingOrder.total = dto.totalAmount;
+
   if (dto.deliveryAddress) {
     try {
-      existingOrder.deliveryAddress = JSON.parse(dto.deliveryAddress);
+      existingOrder.billingDetails = JSON.parse(dto.deliveryAddress);
     } catch {
-      throw new HttpException({ statusCode: 400, error: true, message: 'Invalid address format' }, 400);
+      throw new HttpException(
+        { statusCode: HttpStatus.BAD_REQUEST, error: true, message: 'Invalid address format' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
   await existingOrder.save();
 
   return {
-    statusCode: 200,
+    statusCode: HttpStatus.OK,
     error: false,
     message: 'Order updated successfully',
     data: existingOrder,
@@ -163,12 +141,8 @@ export class ManagerOrderService {
     try {
       if (!userId) {
         throw new HttpException(
-          {
-            statusCode: 400,
-            error: true,
-            message: 'User ID is required',
-          },
-          400,
+          { statusCode: HttpStatus.BAD_REQUEST, error: true, message: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
         );
       }
 
@@ -178,30 +152,23 @@ export class ManagerOrderService {
 
       if (!orders || orders.length === 0) {
         return {
-          statusCode: 404,
+          statusCode: HttpStatus.NOT_FOUND,
           error: true,
           message: `No orders found for user ID ${userId}`,
         };
       }
 
-      const userProfile = await this.fetchUserProfile(userId);
-
-      const enriched = orders.map((order) => ({
-        ...order.toJSON(),
-        userProfile,
-      }));
-
       return {
-        statusCode: 200,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Orders fetched successfully',
-        data: enriched,
+        data: orders.map(order => order.toJSON()),
       };
     } catch (error) {
-      this.logger.error(' Error in findByUserId:', error);
+      this.logger.error('Error in findByUserId:', error);
 
       return {
-        statusCode: error?.status || 500,
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
         message: error?.message || 'Unexpected error while fetching orders',
       };
@@ -210,118 +177,82 @@ export class ManagerOrderService {
 
   async getAnalytics() {
   try {
-    // 1. Total Orders Count
     const totalOrders = await this.orderModel.count();
 
-    // 2. Orders Count by Status
     const ordersByStatus = await this.orderModel.findAll({
-      attributes: [
-        'status',
-        [fn('COUNT', col('status')), 'count']
-      ],
+      attributes: ['status', [fn('COUNT', col('status')), 'count']],
       group: ['status'],
     });
 
-    // 3. Monthly Orders (Last 6 Months)
     const monthlyOrders = await this.orderModel.findAll({
       attributes: [
-        [fn('DATE_TRUNC', 'month', col('createdat')), 'month'],
+        [fn('DATE_TRUNC', 'month', col('createdAt')), 'month'],
         [fn('COUNT', '*'), 'count'],
       ],
-      group: [literal('DATE_TRUNC(\'month\', "createdat")') as any],
-      order: [[literal('DATE_TRUNC(\'month\', "createdat")'), 'DESC']],
+      group: [literal('DATE_TRUNC(\'month\', "createdAt")') as any],
+      order: [[literal('DATE_TRUNC(\'month\', "createdAt")'), 'DESC']],
       limit: 6,
     });
 
-    // 4. Total Revenue Generated (only from delivered orders)
     const totalRevenue = await this.orderModel.sum('total', {
-      where: {
-        status: 'delivered',
-      },
+      where: { status: 'delivered' },
     });
 
-    // 5. Average Order Value (AOV)
-    const totalDeliveredOrders = await this.orderModel.count({
-      where: { status: 'delivered' }
-    });
-
-    // 6. Orders Today / This Week / This Month
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
     const ordersToday = await this.orderModel.count({
-      where: {
-        createdAt: {
-          [Op.gte]: today,
-        },
-      },
+      where: { createdAt: { [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0)) } },
     });
 
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    
     const ordersThisWeek = await this.orderModel.count({
-      where: {
-        createdAt: {
-          [Op.gte]: weekAgo,
-        },
-      },
+      where: { createdAt: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
     });
 
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    
     const ordersThisMonth = await this.orderModel.count({
       where: {
         createdAt: {
-          [Op.gte]: firstDayOfMonth,
+          [Op.gte]: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         },
       },
     });
 
-    // 7. Average Delivery Time
-    const deliveryDurations = await this.orderModel.findAll({
-      where: {
-        deliveredAt: { [Op.ne]: null },
-        confirmedAt: { [Op.ne]: null },
-      },
-      attributes: [
-        [literal('EXTRACT(EPOCH FROM (deliveredat - confirmedat))'), 'duration_seconds'],
-      ],
-    });
-
- 
-
-    // Daily Revenue (existing)
     const daily = await this.orderModel.findAll({
       attributes: [
-        [fn('DATE', col('createdat')), 'date'],
+        [fn('DATE', col('createdAt')), 'date'],
         [fn('SUM', col('total')), 'totalRevenue'],
         [fn('COUNT', col('orderId')), 'totalOrders'],
       ],
-      group: [literal(`DATE("createdat")`) as any],
-      order: [[literal('DATE("createdat")'), 'ASC']],
+      group: [literal(`DATE("createdAt")`) as any],
+      order: [[literal('DATE("createdAt")'), 'ASC']],
     });
 
-    // Weekly Revenue (existing)
     const weekly = await this.orderModel.findAll({
       attributes: [
-        [fn('DATE_TRUNC', 'week', col('createdat')), 'week'],
+        [fn('DATE_TRUNC', 'week', col('createdAt')), 'week'],
         [fn('SUM', col('total')), 'totalRevenue'],
         [fn('COUNT', col('orderId')), 'totalOrders'],
       ],
-      group: [literal('DATE_TRUNC(\'week\', "createdat")') as any],
-      order: [[literal('DATE_TRUNC(\'week\', "createdat")'), 'ASC']],
+      group: [literal('DATE_TRUNC(\'week\', "createdAt")') as any],
+      order: [[literal('DATE_TRUNC(\'week\', "createdAt")'), 'ASC']],
     });
 
-    // Monthly Revenue (existing)
     const monthly = await this.orderModel.findAll({
       attributes: [
-        [fn('DATE_TRUNC', 'month', col('createdat')), 'month'],
+        [fn('DATE_TRUNC', 'month', col('createdAt')), 'month'],
         [fn('SUM', col('total')), 'totalRevenue'],
         [fn('COUNT', col('orderId')), 'totalOrders'],
       ],
-      group: [literal('DATE_TRUNC(\'month\', "createdat")') as any],
-      order: [[literal('DATE_TRUNC(\'month\', "createdat")'), 'ASC']],
+      group: [literal('DATE_TRUNC(\'month\', "createdAt")') as any],
+      order: [[literal('DATE_TRUNC(\'month\', "createdAt")'), 'ASC']],
+    });
+
+    // ✅ Yearly Analytics
+    const yearly = await this.orderModel.findAll({
+      attributes: [
+        [fn('DATE_TRUNC', 'year', col('createdAt')), 'year'],
+        [fn('SUM', col('total')), 'totalRevenue'],
+        [fn('COUNT', col('orderId')), 'totalOrders'],
+      ],
+      group: [literal('DATE_TRUNC(\'year\', "createdAt")') as any],
+      order: [[literal('DATE_TRUNC(\'year\', "createdAt")'), 'ASC']],
     });
 
     return {
@@ -329,24 +260,17 @@ export class ManagerOrderService {
       error: false,
       message: 'Order analytics fetched successfully',
       data: {
-        // Summary Statistics
         totalOrders,
         totalRevenue: totalRevenue || 0,
-        
-        
-        // Time-based Counts
         ordersToday,
         ordersThisWeek,
         ordersThisMonth,
-        
-        // Status Distribution
         ordersByStatus,
-        
-        // Time Series Data
         monthlyOrders,
         daily,
         weekly,
         monthly,
+        yearly, // Added yearly analytics to response
       },
     };
   } catch (error) {
@@ -358,4 +282,5 @@ export class ManagerOrderService {
     };
   }
 }
+
 }

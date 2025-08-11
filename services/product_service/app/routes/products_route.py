@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException, Query, Request, Path
 from typing import Optional, List
 import httpx
+import re
 import uuid
+from urllib.parse import quote
+from odmantic import query
 from app.services.sync_semicon_products import fetch_and_sync_semicon_product
 from app.database import engine
 from app.models.semicon_products import SemiconProduct
@@ -11,50 +14,68 @@ from uuid import UUID
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional
 from bson import ObjectId
+from app.kafka.kafka_producer import send_event
+import asyncio
 router = APIRouter(prefix="/product")
 
 DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
 
-# ======= EXISTING ENDPOINTS =======
-
+# ======= EXISTING ENDPOINTS =======@router.post("/sync/digikey")
 @router.post("/sync/digikey")
 async def sync_digikey_product(payload: dict):
     query = payload.get("query")
     if not query:
         raise HTTPException(status_code=400, detail={"status": "failure", "message": "Query is required"})
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        # 1️⃣ Search API
+    async with httpx.AsyncClient(timeout=180) as client:
         search_url = f"{DIGIKEY_BASE_URL}/search/keyword"
         search_resp = await client.post(search_url, json={"query": query})
         if search_resp.status_code != 200:
             raise HTTPException(status_code=500, detail={"status": "failure", "message": "Search API failed"})
-        
+
         search_data = search_resp.json()
         if not search_data.get("success") or not search_data.get("products"):
-            raise HTTPException(status_code=404, detail={"status": "failure", "message": "Product not found in search"})
+            raise HTTPException(status_code=404, detail={"status": "failure", "message": "No products found in search"})
 
-        product_basic = search_data["products"][0]
-        digi_part_number = product_basic["digiKeyPartNumber"]
+        synced = 0
+        skipped = 0
+        result_main = []
 
-        # 2️⃣ Product details API
-        details_url = f"{DIGIKEY_BASE_URL}/products/{digi_part_number}/productdetails"
-        details_resp = await client.get(details_url)
-        if details_resp.status_code != 200:
-            raise HTTPException(status_code=500, detail={"status": "failure", "message": "Product details API failed"})
+        for product_basic in search_data["products"]:
+            digi_part_number = product_basic["digiKeyPartNumber"]
+            manufacturer_part_number = product_basic.get("manufacturerPartNumber", "")
+            semicon_part_number = f"SPNID-{manufacturer_part_number}"
 
-        details_data = details_resp.json()
-        if not details_data.get("success"):
-            raise HTTPException(status_code=500, detail={"status": "failure", "message": "Invalid product details response"})
+            # Check if product already exists
+            existing = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == semicon_part_number)
+            if existing:
+                skipped += 1
+                continue
 
-    # 3️⃣ Merge data (priority to details)
-    merged_data = {**product_basic, **details_data["product"]}
-    print(f"Merged Data: {merged_data}")
+            # Fetch product details
+            details_url = f"{DIGIKEY_BASE_URL}/products/{digi_part_number}/productdetails"
+            details_resp = await client.get(details_url)
+            if details_resp.status_code != 200:
+                # Could log this or raise; here we just skip
+                skipped += 1
+                continue
 
-    # 4️⃣ Store in DB
-    await fetch_and_sync_semicon_product(merged_data)
+            details_data = details_resp.json()
+            if not details_data.get("success"):
+                skipped += 1
+                continue
 
-    return {"status": "success", "message": f"Product {query} synced successfully"}
+            merged_data = {**product_basic, **details_data["product"]}
+            result= await fetch_and_sync_semicon_product(merged_data)
+            synced += 1
+            result_main.append(result)
+           # print(f"Synced product: {merged_data}")
+    return {
+        "status": "success",
+        "message": f"Sync completed: {synced} products synced, {skipped} products skipped (already exists or failed).",
+        "returned_data": result_main
+    }
+
 
 
 @router.get("/fetchall")
@@ -113,7 +134,7 @@ async def get_all_products(
                     "image_url": doc.get("image_url"),
                     "datasheet_url": doc.get("datasheet_url"),
                     "quantity_available": doc.get("quantity_available"),
-                    "unit_price": doc.get("unit_price"),
+                    "unit_price": doc.get("UnitPrice"),
                     "currency": doc.get("currency"),
                     "manufacturerPartNumber": doc.get("manufacturerPartNumber"),
                     "vendor_details": doc.get("vendor_details", []),
@@ -140,168 +161,140 @@ async def get_all_products(
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
     
 
+
 @router.get("/{product_id}/productdetails")
 async def get_product_by_id(product_id: str):
     try:
-        # Check if product_id is a UUID or semicon_part_number
+        # Try to find product by UUID or semicon_part_number
         product = None
-        
-        # Try as UUID first
         try:
             product_uuid = UUID(product_id)
             product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
         except ValueError:
-            # If not UUID, try as semicon_part_number
             product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
 
         if not product:
+            print(f"Prodppppppp found for product_id: {product_id}")
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Get product details using the existing engine
         collection = engine.get_collection(SemiconProduct)
-        
-        # Aggregation pipeline adapted from renderProductFrame
-        aggregation_pipeline = [
-            {"$match": {"semicon_part_number": product.semicon_part_number}},
-            {
-                "$lookup": {
-                    "from": "semicon_product_details",
-                    "localField": "semicon_part_number",
-                    "foreignField": "semicon_part_number",
-                    "as": "product_details"
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "vendor_products",
-                    "localField": "semicon_part_number",
-                    "foreignField": "semicon_part_number",
-                    "as": "vendor_products"
-                }
-            },
-            {"$unwind": {"path": "$vendor_products", "preserveNullAndEmptyArrays": True}},
-            {"$unwind": {"path": "$vendor_products.product_variants", "preserveNullAndEmptyArrays": True}},
-            {
-                "$lookup": {
-                    "from": "product_variants",
-                    "localField": "vendor_products.product_variants",
-                    "foreignField": "semiocon_product_variant_id",
-                    "as": "product_variants"
-                }
-            },
-            {"$unwind": {"path": "$product_variants", "preserveNullAndEmptyArrays": True}},
-            {
-                "$unwind": {
-                    "path": "$product_variants.semicon_product_variant_pricing_id",
-                    "preserveNullAndEmptyArrays": True
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "variant_pricing",
-                    "localField": "product_variants.semicon_product_variant_pricing_id",
-                    "foreignField": "semicon_product_variant_pricing_id",
-                    "as": "product_variants.pricing_details"
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$_id",
-                    "semicon_part_number": {"$first": "$semicon_part_number"},
-                    "name": {"$first": "$name"},
-                    "description": {"$first": "$description"},
-                    "image_url": {"$first": "$image_url"},
-                    "datasheet_url": {"$first": "$datasheet_url"},
-                    "quantity_available": {"$first": "$quantity_available"},
-                    "unit_price": {"$first": "$unit_price"},
-                    "currency": {"$first": "$currency"},
-                    "status": {"$first": "$status"},
-                    "manufacturerPartNumber": {"$first": "$manufacturerPartNumber"},
-                    "manufacturer_name": {"$first": "$manufacturer_name"},
-                    "created_by": {"$first": "$created_by"},
-                    "created_date": {"$first": "$created_date"},
-                    "modified_by": {"$first": "$modified_by"},
-                    "modified_date": {"$first": "$modified_date"},
-                    "product_details": {"$first": "$product_details"},
-                    "vendor_products": {
-                        "$addToSet": {
-                            "_id": "$vendor_products._id",
-                            "vendor_name": "$vendor_products.vendor_name",
-                            "vendor_product_number": "$vendor_products.vendor_product_number",
-                            "created_by": "$vendor_products.created_by",
-                            "created_date": "$vendor_products.created_date",
-                            "modified_by": "$vendor_products.modified_by",
-                            "modified_date": "$vendor_products.modified_date",
-                            "status": "$vendor_products.status",
-                            "product_variants": "$vendor_products.product_variants"
-                        }
-                    },
-                    "product_variants": {
-                        "$addToSet": {
-                            "$mergeObjects": [
-                                "$product_variants",
-                                {"pricing_details": {"$arrayElemAt": ["$product_variants.pricing_details", 0]}}
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                "$project": {
-                    "semicon_part_number": 1,
-                    "name": 1,
-                    "image_url": 1,
-                    "datasheet_url": 1,
-                    "quantity_available": 1,
-                    "unit_price": 1,
-                    "currency": 1,
-                    "status": 1,
-                    "manufacturerPartNumber": 1,
-                    "manufacturer_name": 1,
-                    "created_by": 1,
-                    "created_date": 1,
-                    "modified_by": 1,
-                    "modified_date": 1,
-                    "Category": {"$arrayElemAt": ["$product_details.Category", 0]},
-                    "Description": {
-                        "ProductDescription": "$description",
-                        "DetailedDescription": {"$arrayElemAt": ["$product_details.DetailedDescription", 0]}
-                    },
-                    "Manufacturer": {
-                        "Name": "$manufacturer_name",
-                        "PartNumber": "$manufacturerPartNumber"
-                    },
-                    "ProductDetails": {
-                        "UnitPrice": {"$arrayElemAt": ["$product_details.UnitPrice", 0]},
-                        "ProductUrl": {"$arrayElemAt": ["$product_details.ProductUrl", 0]},
-                        "BackOrderNotAllowed": {"$arrayElemAt": ["$product_details.BackOrderNotAllowed", 0]},
-                        "NormallyStocking": {"$arrayElemAt": ["$product_details.NormallyStocking", 0]},
-                        "Discontinued": {"$arrayElemAt": ["$product_details.Discontinued", 0]},
-                        "EndOfLife": {"$arrayElemAt": ["$product_details.EndOfLife", 0]},
-                        "Ncnr": {"$arrayElemAt": ["$product_details.Ncnr", 0]},
-                        "ManufacturerLeadWeeks": {"$arrayElemAt": ["$product_details.ManufacturerLeadWeeks", 0]},
-                        "Series": {"$arrayElemAt": ["$product_details.Series", 0]},
-                        "Classifications": {"$arrayElemAt": ["$product_details.Classifications", 0]},
-                        "OtherNames": {"$arrayElemAt": ["$product_details.OtherNames", 0]},
-                        "ProductStatus": {"$arrayElemAt": ["$product_details.ProductStatus", 0]}
-                    },
-                    "VendorProducts": "$vendor_products",
-                    "ProductVariants": "$product_variants"
-                }
-            },
-            {"$limit": 1}
-        ]
 
-        # Execute the aggregation using existing engine
-        product_details = await collection.aggregate(aggregation_pipeline).to_list(length=1)
+        # Use direct queries to build product details (Atlas-compatible approach)
+        print(f"🔍 Building product details for: {product.semicon_part_number}")
         
+        db = collection.database
+        
+        # Step 1: Get product details from semicon_product_details collection
+        product_details_doc = await db.semicon_product_details.find_one({
+            "semicon_part_number": product.semicon_part_number
+        })
+        
+        # Step 2: Get vendor products
+        vendor_products = await db.vendor_products.find({
+            "semicon_part_number": product.semicon_part_number
+        }).to_list(length=None)
+        
+        print(f"📦 Found {len(vendor_products)} vendor products")
+        
+        # Step 3: Get product variants
+        product_variants = []
+        if vendor_products:
+            # Collect all variant IDs from vendor products
+            all_variant_ids = []
+            for vp in vendor_products:
+                variant_ids = vp.get('product_variants', [])
+                all_variant_ids.extend(variant_ids)
+            
+            print(f"🔍 Looking for {len(all_variant_ids)} product variants: {all_variant_ids}")
+            
+            if all_variant_ids:
+                # Get product variants
+                variants = await db.product_variants.find({
+                    "semicon_product_variant_id": {"$in": all_variant_ids}
+                }).to_list(length=None)
+                
+                print(f"✅ Found {len(variants)} product variants")
+                
+                # Step 4: Get pricing details for each variant
+                for variant in variants:
+                    pricing_ids = variant.get('semicon_product_variant_pricing_id', [])
+                    if pricing_ids:
+                        pricing_docs = await db.variant_pricing.find({
+                            "semicon_product_variant_pricing_id": {"$in": pricing_ids}
+                        }).to_list(length=None)
+                        
+                        # Add pricing details to variant
+                        variant['pricing_details'] = pricing_docs[0] if pricing_docs else None
+                
+                product_variants = variants
+        
+        # Step 5: Construct the final result structure (matching JavaScript output)
+        result_doc = {
+            "_id": product.id,
+            "semicon_part_number": product.semicon_part_number,
+            "name": product.name,
+            "description": product.description,
+            "image_url": product.image_url,
+            "datasheet_url": product.datasheet_url,
+            "quantity_available": product.quantity_available,
+            "UnitPrice": product.UnitPrice,
+            "currency": product.currency,
+            "status": product.status,
+            "manufacturerPartNumber": product.manufacturerPartNumber,
+            "manufacturer_name": product.manufacturer_name,
+            "created_by": product.created_by,
+            "created_date": product.created_date,
+            "modified_by": product.modified_by,
+            "modified_date": product.modified_date,
+            
+            # Add structured data from lookups
+            "Category": product_details_doc.get("Category") if product_details_doc else None,
+            "Description": {
+                "ProductDescription": product.description,
+                "DetailedDescription": product_details_doc.get("DetailedDescription") if product_details_doc else None
+            },
+            "Manufacturer": {
+                "Name": product.manufacturer_name,
+                "PartNumber": product.manufacturerPartNumber
+            },
+            "ProductDetails": {
+                "UnitPrice": product_details_doc.get("UnitPrice") if product_details_doc else product.UnitPrice,
+                "ProductUrl": product_details_doc.get("ProductUrl") if product_details_doc else None,
+                "BackOrderNotAllowed": product_details_doc.get("BackOrderNotAllowed") if product_details_doc else None,
+                "NormallyStocking": product_details_doc.get("NormallyStocking") if product_details_doc else None,
+                "Discontinued": product_details_doc.get("Discontinued") if product_details_doc else None,
+                "EndOfLife": product_details_doc.get("EndOfLife") if product_details_doc else None,
+                "Ncnr": product_details_doc.get("Ncnr") if product_details_doc else None,
+                "ManufacturerLeadWeeks": product_details_doc.get("ManufacturerLeadWeeks") if product_details_doc else None,
+                "Series": product_details_doc.get("Series") if product_details_doc else None,
+                "Classifications": product_details_doc.get("Classifications") if product_details_doc else None,
+                "OtherNames": product_details_doc.get("OtherNames", []) if product_details_doc else [],
+                "ProductStatus": product_details_doc.get("ProductStatus") if product_details_doc else None
+            },
+            "VendorProducts": vendor_products,
+            "ProductVariants": product_variants
+        }
+        
+        product_details = [result_doc]
+        print(f"✅ Product details built successfully - VendorProducts: {len(vendor_products)}, ProductVariants: {len(product_variants)}")
+
         if not product_details:
-            # Return basic product info if no details found
+            print(f"No detailed data found for semicon_part_number: {product.semicon_part_number}")
             return {
                 "error": False,
                 "message": "Product retrieved successfully",
                 "data": {
-                    "basic_info": product,
+                    "id": str(product.id),
+                    "name": product.name,
+                    "semicon_part_number": product.semicon_part_number,
+                    "vendor_details": getattr(product, "vendor_details", []),
+                    "semicon_category_id": getattr(product, "semicon_category_id", None),
+                    "semicon_child_category_id": getattr(product, "semicon_child_category_id", None),
+                    "created_by": product.created_by,
+                    "created_date": product.created_date,
+                    "modified_by": product.modified_by,
+                    "modified_date": product.modified_date,
+                    "status": product.status,
                     "detailed_info": {
                         "Category": None,
                         "Description": {
@@ -309,35 +302,60 @@ async def get_product_by_id(product_id: str):
                             "DetailedDescription": None
                         },
                         "Manufacturer": {
-                            "Name": product.manufacturer_name,
-                            "PartNumber": product.manufacturerPartNumber
+                            "Name": getattr(product, "manufacturer_name", None),
+                            "PartNumber": getattr(product, "manufacturerPartNumber", None)
                         },
-                        "ProductDetails": None,
+                        "ProductDetails": {
+                            "UnitPrice": None,
+                            "ProductUrl": None,
+                            "BackOrderNotAllowed": None,
+                            "NormallyStocking": None,
+                            "Discontinued": None,
+                            "EndOfLife": None,
+                            "Ncnr": None,
+                            "ManufacturerLeadWeeks": None,
+                            "Series": None,
+                            "Classifications": None,
+                            "OtherNames": [],
+                            "ProductStatus": None
+                        },
                         "VendorProducts": [],
                         "ProductVariants": []
                     }
                 }
             }
 
-        # Format response
         details = product_details[0]
-        # Filter out empty vendor_products entries
-        vendor_products = [vp for vp in details.get("vendor_products", []) if vp.get("_id")]
-        # Ensure ProductVariants is populated correctly
-        product_variants = details.get("product_variants", []) if details.get("product_variants") else []
+        
+        # Handle empty vendor products and product variants
+        vendor_products = details.get("VendorProducts", [])
+        product_variants = details.get("ProductVariants", [])
+        
+        # Filter out null values from the sets
+        vendor_products = [vp for vp in vendor_products if vp is not None]
+        product_variants = [pv for pv in product_variants if pv is not None]
+        
+        print(f"🔧 Final counts - VendorProducts: {len(vendor_products)}, ProductVariants: {len(product_variants)}")
 
         return {
             "error": False,
             "message": "Product retrieved successfully",
             "data": {
-                "basic_info": product,
+                "id": str(product.id),
+                "name": details.get("name"),
+                "semicon_part_number": details.get("semicon_part_number"),
+                "vendor_details": getattr(product, "vendor_details", []),
+                "semicon_category_id": getattr(product, "semicon_category_id", None),
+                "semicon_child_category_id": getattr(product, "semicon_child_category_id", None),
+                "created_by": details.get("created_by"),
+                "created_date": details.get("created_date"),
+                "modified_by": details.get("modified_by"),
+                "modified_date": details.get("modified_date"),
+                "status": details.get("status"),
                 "detailed_info": {
                     "Category": details.get("Category"),
                     "Description": details.get("Description"),
-                    "Manufacturer": {
-                        "Name": product.manufacturer_name,
-                        "PartNumber": product.manufacturerPartNumber
-                    },
+                    "Manufacturer": details.get("Manufacturer"),
                     "ProductDetails": details.get("ProductDetails"),
                     "VendorProducts": vendor_products,
                     "ProductVariants": product_variants
@@ -348,8 +366,9 @@ async def get_product_by_id(product_id: str):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Error fetching product {product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
-
+    
 @router.get("/search/advanced")
 async def search_products(
     q: Optional[str] = Query(None, description="General search term"),
@@ -492,7 +511,7 @@ async def check_product_availability(product_id: str, quantity: int = Path(..., 
                     "manufacturer_part_number": product.manufacturerPartNumber,
                     "manufacturer_name": product.manufacturer_name,
                     "quantity_available": product.quantity_available,
-                    "unit_price": product.unit_price,
+                    "unit_price": product.UnitPrice,
                     "currency": product.currency,
                     "description": product.description,
                     "image_url": product.image_url,
@@ -515,8 +534,151 @@ async def check_product_availability(product_id: str, quantity: int = Path(..., 
                 "message": f"Error checking product availability: {str(e)}",
                 "product_id": product_id
             }
+
         )
+@router.get("/analytics/count/totalproducts")
+async def get_total_products():
+    try:
+        count = await engine.count(SemiconProduct)
+        return {
+            "error": False,
+            "message": "Total products count retrieved successfully",
+            "total_products": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
+# Fetch details for one product with URL-encoding
+async def fetch_details(part_number: str, client: httpx.AsyncClient):
+    encoded_part_number = quote(part_number)
+    details_url = f"http://172.232.110.10:8003/product/{encoded_part_number}/productdetails"
+    try:
+        resp = await client.get(details_url, timeout=httpx.Timeout(180.0, connect=5.0))  # 10s total timeout, 5s connect
+        resp.raise_for_status()
+        data = resp.json()
+      #  print(f"Fetched details for {part_number}: {data}")  # Log actual data returned
+        return data
+    except httpx.TimeoutException as e:
+        print(f"[WARN] Timeout fetching details for {part_number}: {e}")
+        return {"semicon_part_number": part_number, "error": "Timeout"}
+    except Exception as e:
+        print(f"[WARN] Failed to fetch details for {part_number}: {repr(e)}")
+        return {"semicon_part_number": part_number, "error": str(e)}
 
+async def safe_fetch_details(part_number: str, client: httpx.AsyncClient):
+    try:
+        data = await fetch_details(part_number, client)
+        if not data:
+            print(f"[WARN] Empty data returned for {part_number}")
+        return data
+    except Exception as e:
+        print(f"[WARN] Failed to fetch details for {part_number}: {repr(e)}")
+        return {"semicon_part_number": part_number, "error": str(e)}
+@router.get("/search/{query}")
+async def search_and_get_details(query: str):
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=5.0)) as client:
+            # 1. Search in Mongo
+            search_query = {
+                "$or": [
+                    {"name": {"$regex": query, "$options": "i"}},
+                    {"Manufacturer.Name": {"$regex": query, "$options": "i"}},
+                    {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}},
+                    {"Category.Name": {"$regex": query, "$options": "i"}},
+                    {"manufacturer_part_number": {"$regex": query, "$options": "i"}},
+                ]
+            }
 
+            collection = engine.get_collection(SemiconProductDetails)
+            mongo_matches = await collection.find(search_query).to_list(length=None)
 
+            mongo_part_numbers = {
+                doc.get("semicon_part_number")
+                for doc in mongo_matches if doc.get("semicon_part_number")
+            }
 
+            # 2. Get details for Mongo matches
+            mongo_details = await asyncio.gather(
+                *(safe_fetch_details(pn, client) for pn in mongo_part_numbers),
+                return_exceptions=False
+            )
+
+            # 3. DigiKey sync
+            digi_url = "http://172.232.110.10:8003/product/sync/digikey"
+            digi_products = []
+
+            digi_resp = await client.post(digi_url, json={"query": query})
+
+            if digi_resp.status_code == 404:
+                print(f"[INFO] DigiKey: No products found for query '{query}'")
+            elif digi_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"DigiKey sync failed ({digi_resp.status_code}): {digi_resp.text}"
+                )
+            else:
+                try:
+                    digi_data = digi_resp.json()
+                except ValueError:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"DigiKey returned non-JSON: {digi_resp.text[:200]}"
+                    )
+
+                products = digi_data.get("products", [])
+                if isinstance(products, list):
+                    digi_products = products
+                else:
+                    print("[WARN] DigiKey returned invalid product list")
+
+            digi_part_numbers = {
+                p.get("semicon_part_number")
+                for p in digi_products if p.get("semicon_part_number")
+            }
+
+            # 4. Only fetch DigiKey products that aren't in Mongo
+            new_part_numbers = digi_part_numbers - mongo_part_numbers
+
+            # 5. Get details for DigiKey products
+            digi_details = await asyncio.gather(
+                *(safe_fetch_details(pn, client) for pn in new_part_numbers),
+                return_exceptions=False
+            )
+
+            # 6. Merge results
+            all_results = mongo_details + digi_details
+            all_results = [r for r in all_results if r]  # remove None
+            if not all_results:
+                fallback_query = {
+                    "$or": [
+                        {"name": {"$regex": query, "$options": "i"}},
+                        {"description": {"$regex": query, "$options": "i"}},
+                        {"manufacturer_name": {"$regex": query, "$options": "i"}},
+                        {"manufacturerPartNumber": {"$regex": query, "$options": "i"}},
+                        {"Category.Name": {"$regex": query, "$options": "i"}},
+                        {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}}
+                    ]
+                }
+                    
+                mongo_matches = await collection.find(fallback_query).to_list(length=None)
+                mongo_part_numbers = {
+                    doc.get("semicon_part_number")
+                    for doc in mongo_matches if doc.get("semicon_part_number")
+                 }
+                mongo_details = await asyncio.gather(
+                    *(safe_fetch_details(pn, client) for pn in mongo_part_numbers),
+                    return_exceptions=False
+                )
+            all_results = mongo_details+ digi_details
+            all_results = [r for r in all_results if r]
+            if not all_results:
+                raise HTTPException(status_code=404, detail="No products found")
+
+            return {
+                "message": "Products retrieved successfully",
+                "count": len(all_results),
+                "data": all_results
+            }
+
+    except httpx.ConnectError as e:
+        raise HTTPException(status_code=502, detail=f"Connection failed: {str(e)}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Request error: {str(e)}")  

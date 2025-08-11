@@ -7,7 +7,7 @@ export const kafkaConfig: KafkaOptions = {
         brokers: ['172.235.17.60:9092'], // 👈 external Kafka IP
     },
     consumer: {
-      groupId: 'cart-consumer', // 👈 Unique per service
+      groupId: 'cart_service_group', // 👈 Unique per service
     },
   },
 };

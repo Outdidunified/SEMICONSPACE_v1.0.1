@@ -11,42 +11,57 @@ export class KafkaConsumerService implements OnModuleInit {
   async onModuleInit() {
     this.logger.log('⏳ Kafka Consumer initializing...');
 
+    const kafkaBroker = process.env.KAFKA_BROKER;
+    const kafkaGroupId = process.env.KAFKA_GROUP_ID;
+
+    this.logger.log(`Kafka broker: ${kafkaBroker}`);
+    this.logger.log(`Kafka group ID: ${kafkaGroupId}`);
+
     const kafka = new Kafka({
-      clientId: 'search-service',
-      brokers: [process.env.KAFKA_BROKER], // e.g., "localhost:9092"
+      clientId: 'search-service-consumer-v2',  // Changed clientId to a new unique value
+      brokers: [kafkaBroker],
     });
 
-    const consumer = kafka.consumer({ groupId: process.env.KAFKA_GROUP_ID });
+    const consumer = kafka.consumer({ groupId: kafkaGroupId });
 
-    await consumer.connect();
-    this.logger.log('✅ Kafka Consumer connected');
+    try {
+      await consumer.connect();
+      this.logger.log('✅ Kafka Consumer connected');
+    } catch (err) {
+      this.logger.error(`❌ Kafka connect failed: ${err.message}`, err.stack);
+      throw err;
+    }
 
-    await consumer.subscribe({ topic: 'product.created', fromBeginning: true });
-    await consumer.subscribe({ topic: 'product.updated', fromBeginning: true });
-    await consumer.subscribe({ topic: 'product.activate_deactivate', fromBeginning: true });
-
-    this.logger.log('📩 Subscribed to topics: product.created, product.updated, product.activate_deactivate');
+    try {
+      await consumer.subscribe({ topic: 'product.added', fromBeginning: true });
+      this.logger.log('📩 Subscribed to topic: product.added');
+    } catch (err) {
+      this.logger.error(`❌ Kafka subscribe failed: ${err.message}`, err.stack);
+      throw err;
+    }
 
     await consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
-        const payload = JSON.parse(message.value.toString());
+        let payload;
+        try {
+          payload = JSON.parse(message.value.toString());
+        } catch (e) {
+          this.logger.error(`❌ Failed to parse message: ${e.message}`);
+          return; // skip invalid message
+        }
 
-        this.logger.log(`📨 Received message on topic "${topic}" (partition ${partition}): ${JSON.stringify(payload, null, 2)}`);
+        this.logger.log(`📨 Received message on "${topic}": ${JSON.stringify(payload, null, 2)}`);
+
+        if (!payload.productname || !payload.category || !payload.manufacturer || !payload.subcategory) {
+          this.logger.warn('⚠️ Missing required product fields. Skipping.');
+          return;
+        }
 
         try {
-          const product = payload.product;
-
-          if (!product) {
-            this.logger.warn('⚠️ No "product" field found in Kafka message. Skipping.');
-            return;
-          }
-
-          if (['product.created', 'product.updated', 'product.activate_deactivate'].includes(topic)) {
-            await this.searchService.createOrUpdateProduct(product);
-            this.logger.log(`✅ Product synced to Typesense (topic: ${topic})`);
-          }
+          await this.searchService.createOrUpdateProduct(payload);
+          this.logger.log('✅ Product stored in Typesense and sent to recommendations API');
         } catch (error) {
-          this.logger.error('❌ Failed to process product event:', error);
+          this.logger.error('❌ Failed to process product.added event:', error);
         }
       },
     });

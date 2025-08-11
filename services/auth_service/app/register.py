@@ -59,6 +59,7 @@ async def register_user(request: RegisterRequest, db: AsyncSession = Depends(dat
         created_by=request.email,
         modified_by=None,
         modified_at=None,
+        status=True
     )
 
     db.add(new_user)

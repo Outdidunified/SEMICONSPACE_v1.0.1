@@ -1,46 +1,75 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { typesenseClient } from './typesense.client';
+import axios from 'axios';
 
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
 
   /**
-   * Create or update a product document in Typesense
+   * Create or update a product in Typesense, then send to external API
    */
   async createOrUpdateProduct(product: any) {
     try {
-      if (!product || !product.id) {
-        this.logger.warn('⚠️ Skipping indexing: Product or ID missing');
+      // Ensure required fields exist
+      if (!product.productname || !product.category || !product.manufacturer || !product.subcategory) {
+        this.logger.warn('⚠️ Missing required product fields. Skipping save to Typesense.');
         return;
       }
 
+      const document = {
+        id: this.generateId(product),
+        productname: product.productname,
+        category: product.category,
+        manufacturer: product.manufacturer,
+        subcategory: product.subcategory,
+      };
+
+      // Store in Typesense
       await typesenseClient
         .collections('products')
         .documents()
-        .upsert(product);
+        .upsert(document);
 
-      this.logger.log(`✅ Product upserted to Typesense: ${product.name || product.id}`);
-    } catch (err) {
-      this.logger.error('❌ Typesense indexing error:', err.message);
+      this.logger.log(`✅ Product upserted to Typesense: ${product.productname}`);
+
+      // Send to external recommendations API with query param as productname
+      await this.sendToRecommendationAPI(document, product.productname);
+
+    } catch (err: any) {
+      this.logger.error(`❌ Error in createOrUpdateProduct: ${err.message}`, err.stack);
     }
   }
 
   /**
-   * Search for products by query, filtering only active ones (status: true)
+   * Send product to external API, query is injected into URL path
+   */
+  private async sendToRecommendationAPI(product: any, query: string) {
+    try {
+      // URL encode query for safety
+      const encodedQuery = encodeURIComponent(query);
+
+      const apiUrl = `http://172.232.110.10:8003/product/search/${encodedQuery}`;
+
+      const response = await axios.get(apiUrl, product);
+
+      this.logger.log(`📡 Sent to external API. Status: ${response.status}`);
+    } catch (error: any) {
+      this.logger.error(`❌ Failed to send to external API: ${error.message}`);
+    }
+  }
+
+  /**
+   * Search products in Typesense
    */
   async search(query: string) {
     try {
       const searchParams = {
         q: query,
-        query_by: 'name,description,supplier,manufacturer_part_number,category',
-        filter_by: 'status:=true', // 🔐 Only return active products
-        prefix: true,              // 🔁 Enables autocomplete-like search
-        typo_tokens_threshold: 100, // 🔤 Typo tolerance for long queries
-        num_typos: 2,              // 🔤 Allow up to 2 typos
-        sort_by: '_text_match:desc', // 🔼 Best match first
-        per_page: 20,
-        exhaustive_search: false,   // ⚡️ Faster partial results
+        query_by: 'productname,category,manufacturer,subcategory',
+        prefix: true,
+        num_typos: 6,
+        per_page: 250, // maximum allowed
       };
 
       const result = await typesenseClient
@@ -50,11 +79,20 @@ export class SearchService {
 
       return {
         count: result.found,
-        hits: result.hits.map((hit) => hit.document),
+        hits: result.hits.map(hit => hit.document),
       };
-    } catch (err) {
-      this.logger.error('❌ Typesense search failed:', err.message);
+    } catch (err: any) {
+      this.logger.error(`❌ Typesense search failed: ${err.message}`);
       return { count: 0, hits: [] };
     }
+  }
+
+  /**
+   * Generate unique ID for Typesense
+   */
+  private generateId(product: any): string {
+    return `${product.productname}-${product.manufacturer}`
+      .toLowerCase()
+      .replace(/\s+/g, '-');
   }
 }

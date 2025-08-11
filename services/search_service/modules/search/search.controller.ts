@@ -1,5 +1,4 @@
-
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { SearchService } from './search.service';
 
 @Controller('search')
@@ -8,9 +7,11 @@ export class SearchController {
 
   @Get()
   async search(@Query('q') q: string) {
-    if (!q || q.trim().length === 0) {
-      return { count: 0, hits: [], message: 'Empty query not allowed' };
+    const query = q?.trim();
+    if (!query) {
+      throw new HttpException('Empty query not allowed', HttpStatus.BAD_REQUEST);
     }
-    return this.searchService.search(q);
+
+    return this.searchService.search(query);
   }
 }

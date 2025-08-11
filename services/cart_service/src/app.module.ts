@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CartModule } from './cart/cart.module';
 import { RedisModule } from './redis/redis.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { KafkaModule } from './kafka/kafka.module';
 // Uncomment after installing the package
 // import { ThrottlerModule } from '@nestjs/throttler';
 
@@ -68,7 +69,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
             },
           },
           consumer: {
-            groupId: 'cart-group',
+            groupId: 'cart_service_group',
             // Allow parallel message processing
             allowAutoTopicCreation: true,
             maxWaitTimeInMs: 5000,
@@ -83,6 +84,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 
     CartModule,
     RedisModule,
+    // Import Kafka module for payment consumer
+   KafkaModule
   
   ],
 })

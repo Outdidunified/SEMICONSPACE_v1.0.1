@@ -9,7 +9,7 @@ import logging
 from fastapi.staticfiles import StaticFiles
 from app.database import client
 #from app.job.digikey import save_digikey_product_to_db
-#from app.kafka.kafka_producer import start_kafka, stop_kafka
+from app.kafka.kafka_producer import start_kafka, stop_kafka
 #from app.kafka.kafka_consumer import start_consumer
 
 # Routers
@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
 
     while True:
         try:
-           # await start_kafka()
+            await start_kafka()
             logger.info("✅ Kafka producer started")
             break
         except Exception:
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     #consumer_task.cancel()
     logger.info("🛑 Kafka consumer task cancelled")
 
-    #await stop_kafka()
+    await stop_kafka()
     logger.info("✅ Kafka producer stopped")
 
 
