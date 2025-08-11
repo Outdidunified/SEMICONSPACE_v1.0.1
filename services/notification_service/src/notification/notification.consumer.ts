@@ -10,14 +10,24 @@ export class NotificationConsumer {
   async handleUserRegistered(@Payload() payload: any) {
     const timestamp = new Date().toISOString();
 
+    const subject = `🎉 Welcome to Semicon Space, ${payload.first_name}!`;
+    const message = `
+      <h2 style="color:#2d89ef;">Welcome aboard, ${payload.first_name}!</h2>
+      <p>We’re excited to have you join the Semicon Space community 🚀</p>
+      <p>Here’s to exploring new possibilities together!</p>
+      <br/>
+      <small>Logged at: ${timestamp}</small>
+    `;
+
     await this.notificationService.sendNotification({
       toEmail: payload.email,
       type: 'email',
-      message: `Welcome ${payload.first_name}! Thanks for registering.`,
+      message,
       userId: payload.userId,
       notificationId: Date.now(),
       status: 'sent',
       timestamp,
+      subject,
     });
   }
 
@@ -30,16 +40,25 @@ export class NotificationConsumer {
       return;
     }
 
+    const subject = '🔐 Login Alert - Semicon Space';
+    const message = `
+      <h2 style="color:#28a745;">Hello again!</h2>
+      <p>We noticed you just logged into your account at <b>${payload.time}</b>.</p>
+      <p>If this wasn’t you, please reset your password immediately.</p>
+      <br/>
+      <small>Logged at: ${timestamp}</small>
+    `;
+
     await this.notificationService.sendNotification({
       toEmail: payload.email,
       type: 'email',
-      message: `Hi! You just logged in at ${payload.time}`,
+      message,
       userId: payload.userId,
       notificationId: Date.now(),
       phone: payload.phone,
       status: 'sent',
       timestamp,
-      subject: 'Login Alert',
+      subject,
       channel: 'email',
       sender: 'notification-service',
     });
@@ -54,14 +73,23 @@ export class NotificationConsumer {
       const timestamp = new Date().toISOString();
 
       const itemSummary = Array.isArray(order.items)
-        ? order.items.map((item, i) => `Item ${i + 1}: Product ID ${item.productId} | Qty: ${item.qty} | Price: $${item.price}`).join(', ')
-        : 'Order items unavailable';
+        ? order.items.map(
+            (item, i) =>
+              `<li>Product ID: <b>${item.productId}</b> | Qty: ${item.qty} | Price: $${item.price}</li>`
+          ).join('')
+        : '<li>Order items unavailable</li>';
 
+      const subject = `🛒 Order Confirmation #${order.orderId}`;
       const message = `
-        Your order (${order.orderId}) has been placed successfully.<br/>
-        Total Amount: $${order.total}<br/>
-        Status: ${order.status}<br/>
-        Items: ${itemSummary}
+        <h2 style="color:#ff6600;">Your order has been placed successfully!</h2>
+        <p>Thank you for shopping with Semicon Space. Here are your order details:</p>
+        <ul>
+          ${itemSummary}
+        </ul>
+        <p><b>Total Amount:</b> $${order.total}</p>
+        <p><b>Status:</b> ${order.status}</p>
+        <br/>
+        <small>Order placed at: ${timestamp}</small>
       `;
 
       await this.notificationService.sendNotification({
@@ -72,7 +100,7 @@ export class NotificationConsumer {
         notificationId: Date.now(),
         status: 'sent',
         timestamp,
-        subject: 'Your Order Confirmation',
+        subject,
         channel: 'email',
         sender: 'notification-service',
       });
