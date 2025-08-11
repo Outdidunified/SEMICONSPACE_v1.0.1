@@ -12,6 +12,7 @@ from app.schemas.manufacturers_schema import (
 )
 from app.autogenerate import get_next_manufacturer_counter
 from fastapi.encoders import jsonable_encoder
+from app.services.sync_semicon_manufacturers import fetch_and_sync_semicon_manufacturers
 import logging
 
 # Set up logging
@@ -20,6 +21,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/product")
 
 
+
+
+@router.post("/sync/manufacturers/all", tags=["Sync"])
+async def sync_semicon_manufacturers():
+    result = await fetch_and_sync_semicon_manufacturers()
+    if result["status"] == "success":
+        return {
+            "error": False,
+            "message": f"Synced {result.get('saved_count', 0)} manufacturers successfully",
+            "data": []
+        }
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": "Failed to sync manufacturers",
+                "data": []
+            }
+        )
 def transform_mongo_doc(doc):
     """Transform MongoDB document to standard API response format"""
     doc_dict = doc.dict()
@@ -240,8 +261,6 @@ async def get_manufacturers_with_products():
     """
     # Step 1: Fetch only active products
     collection = engine.get_collection(SemiconProducts)
-    print(collection)
-    print(1)
     mongo_matches = await collection.find({"status": True}).to_list(length=None)
     #print(mongo_matches)
 

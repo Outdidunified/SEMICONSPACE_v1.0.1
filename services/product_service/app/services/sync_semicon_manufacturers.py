@@ -24,13 +24,15 @@ async def get_next_semicon_manufacturer_counter() -> int:
 
 
 async def fetch_and_sync_semicon_manufacturers() -> dict:
+    print("🔄 Fetching and syncing manufacturers from DigiKey.. ")
     url = "http://172.232.110.10:8000/api/digikey/manufacturers"
-    timeout = httpx.Timeout(200.0)
+    timeout = httpx.Timeout(350)
     created_by = "admin"
     modified_by = "admin"
 
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
+            print(1)
             response = await client.get(url)
             response.raise_for_status()
             manufacturers_data = response.json().get("Manufacturers", [])

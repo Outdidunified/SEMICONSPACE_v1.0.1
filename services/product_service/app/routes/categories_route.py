@@ -14,7 +14,7 @@ from logging import getLogger as logger
 router = APIRouter(prefix="/product")
 
 # 🚀 Sync categories
-@router.get("/sync/categories", tags=["Sync"])
+@router.post("/sync/categories", tags=["Sync"])
 async def sync_semicon_categories():
     result = await fetch_and_sync_semicon_categories()
     if result["status"] == "success":
