@@ -140,6 +140,9 @@ async handleGetCartItems(userId: string): Promise<any> {
     let cart = await redis.hGetAll(redisKey);
     let entries = Object.entries(cart);
 
+          console.log(entries);
+
+
     // If Redis is empty, fetch from DB and rehydrate
     if (entries.length === 0) {
       const dbItems = await this.cartRepository.find({ where: { userId } });
@@ -198,60 +201,97 @@ async handleGetCartItems(userId: string): Promise<any> {
   }
 }
 
-  async handleRemoveFromCart(userId: string, productId: string): Promise<any> {
-    const redis = this.redisService.getClient();
-    const redisKey = `cart:${userId}`;
+async handleRemoveFromCart(userId: string, productId: string): Promise<any> {
+  const redis = this.redisService.getClient();
+  const redisKey = `cart:${userId}`;
 
-    if (!userId || !productId) {
-      return {
-        statusCode: 400,
-        error: true,
-        message: 'Invalid userId or productId',
-      };
-    }
-
-    try {
-      // ✅ Step 1: Remove from Redis
-      await redis.hDel(redisKey, productId);
-
-      // ✅ Step 2: Remove from DB
-      const existingItem = await this.cartRepository.findOne({
-        where: { userId, productId }, // productId is now string
-      });
-      if (existingItem) {
-        await this.cartRepository.remove(existingItem);
-      }
-
-      // ✅ Step 3: Emit Kafka
-      this.kafkaClient.emit('cart.item.removed', {
-        userId,
-        productId,
-        status: 'success',
-        timestamp: new Date().toISOString(),
-      });
-
-      return {
-        statusCode: 200,
-        error: false,
-        message: 'Item removed from cart',
-        data: { userId, productId },
-      };
-    } catch (error) {
-      this.kafkaClient.emit('cart.item.removed.error', {
-        userId,
-        productId,
-        status: 'error',
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      });
-
-      return {
-        statusCode: 500,
-        error: true,
-        message: error.message || 'Failed to remove item from cart',
-      };
-    }
+  if (!userId || !productId) {
+    return {
+      statusCode: 400,
+      error: true,
+      message: 'Invalid userId or productId',
+    };
   }
+
+  try {
+    // ✅ Step 1: Set a temporary flag to prevent sync service from overriding our removal
+    const removalFlagKey = `cart_removal_in_progress:${userId}:${productId}`;
+    await redis.setEx(removalFlagKey, 15, 'true'); // 15 seconds TTL
+
+    // ✅ Step 2: Find the actual hash field that matches the productId
+    const cartItems = await redis.hGetAll(redisKey);
+    let fieldToDelete: string | null = null;
+
+    for (const [field, value] of Object.entries(cartItems)) {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed.productId === productId) {
+          fieldToDelete = field;
+          break;
+        }
+      } catch (e) {
+        // Ignore parse errors for corrupted data
+      }
+    }
+
+    if (fieldToDelete) {
+      const removedCount = await redis.hDel(redisKey, fieldToDelete);
+
+      if (removedCount > 0) {
+        const remainingItems = await redis.hLen(redisKey);
+        if (remainingItems === 0) {
+          await redis.del(redisKey);
+        }
+      }
+    }
+
+    // ✅ Step 3: Remove from DB
+    await this.cartRepository.delete({ userId, productId });
+
+    // ✅ Step 4: Clean up the removal flag
+    await redis.del(removalFlagKey);
+
+        let cart = await redis.hGetAll(redisKey);
+    let entries = Object.entries(cart);
+
+          console.log(entries);
+
+    // ✅ Step 5: Emit Kafka
+    this.kafkaClient.emit('cart.item.removed', {
+      userId,
+      productId,
+      status: 'success',
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      statusCode: 200,
+      error: false,
+      message: 'Item removed from cart',
+      data: { userId, productId },
+    };
+  } catch (error) {
+    // Clean up the removal flag in case of error
+    const removalFlagKey = `cart_removal_in_progress:${userId}:${productId}`;
+    await redis.del(removalFlagKey).catch(() => {});
+
+    this.kafkaClient.emit('cart.item.removed.error', {
+      userId,
+      productId,
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      statusCode: 500,
+      error: true,
+      message: error.message || 'Failed to remove item from cart',
+    };
+  }
+}
+
+
 
   async clearCart(userId: string): Promise<any> {
     const redis = this.redisService.getClient();
@@ -266,10 +306,14 @@ async handleGetCartItems(userId: string): Promise<any> {
     }
 
     try {
-      // ✅ Step 1: Remove from Redis
+      // ✅ Step 1: Set a flag to prevent sync service from interfering
+      const clearFlagKey = `cart_clear_in_progress:${userId}`;
+      await redis.setEx(clearFlagKey, 15, 'true'); // 15 seconds TTL
+
+      // ✅ Step 2: Remove from Redis
       await redis.del(redisKey);
 
-      // ✅ Step 2: Remove all items from DB for this user
+      // ✅ Step 3: Remove all items from DB for this user
       const existingItems = await this.cartRepository.find({
         where: { userId },
       });
@@ -278,7 +322,10 @@ async handleGetCartItems(userId: string): Promise<any> {
         await this.cartRepository.remove(existingItems);
       }
 
-      // ✅ Step 3: Emit Kafka
+      // ✅ Step 4: Clean up the clear flag
+      await redis.del(clearFlagKey);
+
+      // ✅ Step 5: Emit Kafka
       this.kafkaClient.emit('cart.cleared', {
         userId,
         itemsCleared: existingItems.length,
@@ -293,6 +340,10 @@ async handleGetCartItems(userId: string): Promise<any> {
         data: { userId, itemsCleared: existingItems.length },
       };
     } catch (error) {
+      // Clean up the clear flag in case of error
+      const clearFlagKey = `cart_clear_in_progress:${userId}`;
+      await redis.del(clearFlagKey).catch(() => {}); // Ignore errors in cleanup
+
       this.kafkaClient.emit('cart.cleared.error', {
         userId,
         status: 'error',
