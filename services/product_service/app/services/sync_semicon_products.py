@@ -285,9 +285,10 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
     # -------- PRODUCT VARIANTS & PARAMETERS & PRICING --------
     
     parameter_counter = await get_next_parameter_counter(db)
+    variant_counter = await get_next_variant_counter(db)
     for variation_idx, variation in enumerate(digikey_data.get("productVariations", [])):
         # Create parameters specific to this variant
-        spvid = await get_next_variant_counter(db)
+       
         variant_params = []
         for idx, param in enumerate(variation.get("parameters", digikey_data.get("parameters", []))):
             spara_id = f"SPARAID-{parameter_counter}"
@@ -322,9 +323,11 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
             #     parameter_type="string"
             # )
         await db.save(listing_product)
+        ssidk = f"SPVID-{variant_counter}"
+        variant_counter += 1 
 
         # Create variant document
-        ssidk=f"SPVID-{spvid}"
+        ssidk=f"SPVID-{ssidk}"
         vendor_part_number = variation.get("digiKeyProductNumber") or variation.get("DigiKeyProductNumber") or variation.get("productNumber") or "UNKNOWN"
         supplier_id, supplier_name = parse_manufacturer(variation.get("Supplier") or digikey_data.get("Manufacturer"))
         variant_doc = VendorProductVariant(
@@ -373,7 +376,8 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
         "category": details.Category.Name,
         "manufacturer": manu_name,
         "subcategory": sb,
+        "semicon_part_number": listing_product.semicon_part_number,
      }
 
-    await send_event(topic="product.added1", value=all_data_dict)
+    await send_event(topic="product.added", value=all_data_dict)
     return listing_product 

@@ -583,12 +583,18 @@ async def search_and_get_details(query: str):
                     {"Manufacturer.Name": {"$regex": query, "$options": "i"}},
                     {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}},
                     {"Category.Name": {"$regex": query, "$options": "i"}},
-                    {"manufacturer_part_number": {"$regex": query, "$options": "i"}},
+                    {"manufacturerPartNumber": {"$regex": query, "$options": "i"}},
+                    {"semicon_part_number": {"$regex": query, "$options": "i"}}
                 ]
             }
 
             collection = engine.get_collection(SemiconProductDetails)
+            collection2 = engine.get_collection(SemiconProduct)
             mongo_matches = await collection.find(search_query).to_list(length=None)
+            if not mongo_matches:
+                mongo_matches = await collection2.find(search_query).to_list(length=None)
+                print(2)
+
 
             mongo_part_numbers = {
                 doc.get("semicon_part_number")
@@ -649,12 +655,12 @@ async def search_and_get_details(query: str):
             if not all_results:
                 fallback_query = {
                     "$or": [
-                        {"name": {"$regex": query, "$options": "i"}},
-                        {"description": {"$regex": query, "$options": "i"}},
-                        {"manufacturer_name": {"$regex": query, "$options": "i"}},
-                        {"manufacturerPartNumber": {"$regex": query, "$options": "i"}},
-                        {"Category.Name": {"$regex": query, "$options": "i"}},
-                        {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}}
+                         {"name": {"$regex": query, "$options": "i"}},
+                         {"Manufacturer.Name": {"$regex": query, "$options": "i"}},
+                         {"Category.ChildCategories.Name": {"$regex": query, "$options": "i"}},
+                         {"Category.Name": {"$regex": query, "$options": "i"}},
+                         {"manufacturerPartNumber": {"$regex": query, "$options": "i"}},
+                         {"semicon_part_number": {"$regex": query, "$options": "i"}}
                     ]
                 }
                     

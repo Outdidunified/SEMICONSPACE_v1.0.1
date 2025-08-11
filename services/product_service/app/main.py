@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.database import client
 #from app.job.digikey import save_digikey_product_to_db
 from app.kafka.kafka_producer import start_kafka, stop_kafka
-#from app.kafka.kafka_consumer import start_consumer
+from app.kafka.kafka_consumer import start_consumer
 
 # Routers
 from app.routes.products_route import router as products_router
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
             logger.warning("⏳ MongoDB not ready, retrying in 3s...", exc_info=True)
             await asyncio.sleep(3)
 
-    #consumer_task = asyncio.create_task(start_consumer())
+    consumer_task = asyncio.create_task(start_consumer())
     logger.info("🎧 Kafka consumer task launched")
     
     #await save_digikey_product_to_db()
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
     yield
 
    
-    #consumer_task.cancel()
+    consumer_task.cancel()
     logger.info("🛑 Kafka consumer task cancelled")
 
     await stop_kafka()

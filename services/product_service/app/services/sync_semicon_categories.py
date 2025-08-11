@@ -45,14 +45,14 @@ def build_child_category(data: dict, parent_id: str, counter: ChildCategoryCount
     ]
 
     return SemiconChildCategory(
-        #id=uuid4(),
+        id=uuid4(),
         semicon_child_category_id=this_id,
         semicon_child_parent_id= parent_id,
         digikey_child_category_id=data["CategoryId"],
         digikey_child_name=data["Name"],
         digikey_parent_id=str(data.get("ParentId")) if data.get("ParentId") is not None else None,
         product_count=data.get("ProductCount", 0),
-        child_categories=data.get("child_categories") or [],
+        child_categories=children,
         created_by="admin",
         modified_by="admin",
         created_date=now,
@@ -123,7 +123,7 @@ async def fetch_and_sync_semicon_categories():
                 logger.info(f"✅ saved category: {existing.digikey_name}")
             else:
                 await engine.save(category_doc)
-                logger.info(f"✅ already category: {category_doc.digikey_name}")
+                logger.info(f"✅ saved category: {category_doc.digikey_name}")
                 scid_counter += 1
             
             count += 1
