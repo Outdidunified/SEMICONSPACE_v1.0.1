@@ -81,10 +81,17 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # If it's a 200 "failure" response, return it as-is
+    if exc.status_code == 200 and isinstance(exc.detail, dict):
+        return JSONResponse(
+            status_code=200,
+            content=exc.detail
+        )
+
+    # Default error wrapper
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            #"status": "failure",
             "Error": "true",
             "status_code": exc.status_code,
             "message": exc.detail

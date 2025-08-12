@@ -596,7 +596,7 @@ async def search_and_get_details(query: str):
                 }
 
             # 3. DigiKey sync
-            digi_url = "http://localhost:8002/product/sync/digikey"
+            digi_url = "http://172.232.110.10:8003/product/sync/digikey"
             digi_products = []
 
             digi_resp = await client.post(digi_url, json={"query": query})
@@ -676,3 +676,71 @@ async def search_and_get_details(query: str):
         raise HTTPException(status_code=502, detail=f"Connection failed: {str(e)}")
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Request error: {str(e)}")  
+    
+from app.models.categories_models import SemiconCategory, SemiconChildCategory
+async def get_category_counts():
+    """Get counts of all categories and subcategories with names"""
+        # Access the raw MongoDB collection to bypass odmantic validation
+    collection = engine.get_collection(SemiconCategory)
+        
+        # Fetch all categories
+    categories = await collection.find().to_list(None)
+        
+    total_parent_categories = len(categories)
+    total_child_categories = 0
+    total_grandchild_categories = 0
+        
+    categories_data = []
+        
+    for category in categories:
+        parent_info = {
+            "name": category.get("digikey_name", "Unknown"),
+            "parent_category_id": category.get("semicon_category_id", ""),
+            "child_count": len(category.get("child_categories", [])),
+             "children": []
+        }
+            
+            # Count child categories
+        child_categories = category.get("child_categories", [])
+        total_child_categories += len(child_categories)
+            
+            # Process child categories
+        for child in child_categories:
+            child_info = {
+                "name": child.get("digikey_child_name", "Unknown"),
+                "child_category_id": child.get("semicon_child_category_id", ""),
+                "grandchild_count": len(child.get("child_categories", []))
+            }
+                
+                # Count grandchild categories
+            grandchild_categories = child.get("child_categories", [])
+            total_grandchild_categories += len(grandchild_categories)
+                
+            parent_info["children"].append(child_info)
+            
+        categories_data.append(parent_info)
+        
+    return {
+        total_parent_categories,
+        total_child_categories
+    }
+    
+from app.models.manufacturers_models import SemiconManufacturer
+@router.get("/analytics/count/all")
+async def get_all_counts():
+    collection = engine.get_collection(SemiconManufacturer)
+        
+        # Fetch all manufacturers
+    manufacturers = await collection.find({"status": True}).to_list(None)
+        
+    total_active_manufacturers = len(manufacturers)
+    total_active_category,total_active_child_category = await get_category_counts()
+    total_product_count = await engine.count(SemiconProduct)
+
+    return {
+
+        "total_active_manufacturers": total_active_manufacturers,
+        "total_active_categories": total_active_category,
+        "total_active_child_categories": total_active_child_category,
+        "total_products": total_product_count
+    }
