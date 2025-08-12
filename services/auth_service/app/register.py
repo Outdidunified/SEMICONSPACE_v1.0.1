@@ -57,6 +57,7 @@ async def register_user(request: RegisterRequest, db: AsyncSession = Depends(dat
         role=role_name,
         role_id=request.role_id,
         created_by=request.email,
+        created_at=datetime.now(timezone.utc),
         modified_by=None,
         modified_at=None,
         status=True
