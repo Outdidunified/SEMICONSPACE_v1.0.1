@@ -18,9 +18,13 @@ from app.routes.categories_route import router as categories_router
 # from app.routes.pricing_route import router as pricing_router
 # from app.routes.specification_route import router as specification_route
 from app.routes.manufacturer_route import router as manufacturer_route
+from app.autogenerate import get_next_variant_counter
+from app.autogenerate import get_next_category_counter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
 
 
 @asynccontextmanager
@@ -30,6 +34,9 @@ async def lifespan(app: FastAPI):
         try:
             await start_kafka()
             logger.info("✅ Kafka producer started")
+            
+            print(await get_next_category_counter())
+            print(await get_next_variant_counter())
             break
         except Exception:
             logger.warning("⏳ Kafka producer not ready, retrying in 3s...", exc_info=True)
@@ -107,6 +114,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
             "message": "Internal Server Error"
         }
     )
+
 app.include_router(products_router)
 app.include_router(categories_router)
 # app.include_router(pricing_router)

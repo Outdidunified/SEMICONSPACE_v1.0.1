@@ -7,10 +7,10 @@ from typing import Optional
 class Supplier(EmbeddedModel):
     id: int
     name: str
-class parameter(EmbeddedModel):
-    parameter_id: str
-    value_id: str
-    value_text: str
+# class parameter(EmbeddedModel):
+#     parameter_id: str
+#     value_id: str
+#     value_text: str
 
 class VendorProduct(Model):
     
@@ -30,7 +30,8 @@ class VendorProduct(Model):
     modified_by: str
     modified_date: datetime = Field(default_factory=datetime.utcnow)
     status: Optional[bool] = None
-    parameters: List[parameter] 
+    package_type: Optional[str] = None
+    #parameters: List[parameter] 
     semicon_product_variant_pricing_id: List[str] = Field(default_factory=list)
 
     model_config = {
