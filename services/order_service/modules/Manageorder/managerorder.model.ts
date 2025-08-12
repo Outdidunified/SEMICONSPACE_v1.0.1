@@ -7,8 +7,8 @@ import {
 } from 'sequelize-typescript';
 
 @Table({
-  tableName: 'Order', // Your actual table name with quotes in DB
-  timestamps: true,   // createdAt & updatedAt handled automatically
+  tableName: 'Order',
+  timestamps: true, // Sequelize auto-manages createdAt & updatedAt
 })
 export class ManagerOrder extends Model<ManagerOrder> {
   @PrimaryKey
@@ -67,6 +67,7 @@ export class ManagerOrder extends Model<ManagerOrder> {
   @Column({ type: DataType.DATE, field: 'deliveredat', allowNull: true })
   deliveredAt?: Date;
 
+  // ✅ Ensure Sequelize maps to DB column "createdAt"
   @Column({ type: DataType.DATE, field: 'createdAt' })
   createdAt!: Date;
 
