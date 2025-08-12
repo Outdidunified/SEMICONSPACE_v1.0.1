@@ -146,7 +146,10 @@ async getUserStats() {
 
 
   // ✏️ Update user
-async update(userId: string, dto: UpdateManageUserDto & { modified_by: string }) {
+async update(
+  userId: string,
+  dto: UpdateManageUserDto & { modified_by: string }
+) {
   try {
     const profile = await this.profileModel.findByPk(userId);
     if (!profile) {
@@ -213,14 +216,32 @@ async update(userId: string, dto: UpdateManageUserDto & { modified_by: string })
         modified_by: dto.modified_by,
         modified_date: new Date(),
       },
-      { where: { userId } },
+      { where: { userId } }
     );
 
     const updated = await this.profileModel.findByPk(userId);
+
+    // Produce Kafka event only if status changed
+    if (isStatusModified) {
+      const topic = 'user.status.updated';
+
+      await this.producerService.produceEvent(topic, {
+        userId: updated.userId,
+        oldStatus: profile.status,
+        newStatus: updated.status,
+        modifiedBy: dto.modified_by,
+        modifiedDate: updated.modified_date,
+      });
+    }
+
     return {
       statusCode: HttpStatus.OK,
       error: false,
-      message: `Profile updated successfully${isStatusModified ? ` and status changed to ${dto.status ? 'Active' : 'Inactive'}` : ''}`,
+      message: `Profile updated successfully${
+        isStatusModified
+          ? ` and status changed to ${dto.status ? 'Active' : 'Inactive'}`
+          : ''
+      }`,
       data: updated,
     };
   } catch (error) {
@@ -232,6 +253,7 @@ async update(userId: string, dto: UpdateManageUserDto & { modified_by: string })
     };
   }
 }
+
 
 
   // // 🚦 Toggle user status

@@ -8,7 +8,7 @@ import {
 } from 'sequelize-typescript';
 import { v4 as uuidv4 } from 'uuid';
 
-@Table({ tableName: 'users', timestamps: false })
+@Table({ tableName: 'profile_details', timestamps: false })
 export class ManageUser extends Model {
   @PrimaryKey
   @Default(uuidv4)
