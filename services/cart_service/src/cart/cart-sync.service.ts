@@ -119,6 +119,7 @@ export class CartSyncService {
               imageUrl: parsed.imageUrl || '',
               createdBy: userId,
               modifiedBy: userId,
+              packageType: parsed.packageType || '',
               createdDate: parsed.createdDate ? new Date(parsed.createdDate) : new Date(),
               modifiedDate: new Date(),
               status: parsed.status ?? true,

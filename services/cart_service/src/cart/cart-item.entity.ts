@@ -50,4 +50,7 @@ export class CartItem {
 
   @Column({ default: true })
   status: boolean;
+
+  @Column({ name: 'package_type', nullable: true })
+  packageType: string; // New field for package type
 }

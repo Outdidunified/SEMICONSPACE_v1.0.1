@@ -19,8 +19,14 @@ export class CartService {
     @Inject('KAFKA_SERVICE')
     private readonly kafkaClient: ClientKafka,
   ) {}
-async handleAddToCart(body: { userId: string; productId: string; quantity: number }): Promise<any> {
-  const { userId, productId, quantity } = body;
+async handleAddToCart(body: {
+  userId: string;
+  productId: string;
+  quantity: number;
+  price: number;         // from user request
+  packageType?: string;  // optional from user request
+}): Promise<any> {
+  const { userId, productId, quantity, price: userPrice, packageType } = body;
   const redis = this.redisService.getClient();
   const redisKey = `cart:${userId}`;
   const productIdKey = productId;
@@ -30,27 +36,21 @@ async handleAddToCart(body: { userId: string; productId: string; quantity: numbe
   }
 
   try {
-    // 🧾 Log basic inputs
     console.log('🧾 Product ID:', productId);
     console.log('📦 Quantity:', quantity);
+    console.log('💲 Price from user request:', userPrice);
+    console.log('📦 Package Type from user request:', packageType);
 
-    // 📡 External API
     const externalUrl = `http://172.232.110.10:8003/product/quantity/check/${productId}/${quantity}`;
     console.log('➡️ Fetching product from:', externalUrl);
 
     const response = await firstValueFrom(this.httpService.get(externalUrl));
     const responseData = response.data;
 
-    // 🧾 Log full response
     console.log('📦 Full external API response:', JSON.stringify(responseData, null, 2));
 
     const product = responseData?.data?.product;
-    const price = product?.unit_price ?? 0;
 
-    console.log('📦 Parsed product:', product);
-    console.log('💲 Price:', price);
-
-    // ❌ Validate response
     if (!product || product?.detail) {
       const message = product?.detail?.message || responseData?.message || 'Product not found';
       console.log('❌ Product fetch failed:', message);
@@ -62,14 +62,14 @@ async handleAddToCart(body: { userId: string; productId: string; quantity: numbe
       };
     }
 
-    // 🛒 Build cart item
     const now = new Date();
     const cartItemData: DeepPartial<CartItem> = {
       userId,
-      productId: product.semicon_part_number || productId, // fallback
+      productId: product.semicon_part_number || productId,
       quantity,
       name: product.name || '',
-      price,
+      price: userPrice,         // use price from user request only
+      packageType: packageType, // use packageType from user request
       description: product.description || '',
       manufacturerName: product.manufacturer_name || '',
       manufacturerPartNumber: product.manufacturer_part_number || '',
@@ -82,11 +82,9 @@ async handleAddToCart(body: { userId: string; productId: string; quantity: numbe
       status: product.status ?? true,
     };
 
-    // ♻️ Redis
     await redis.hSet(redisKey, productIdKey, JSON.stringify(cartItemData));
-    await redis.expire(redisKey, 86400); // 24h TTL
+    await redis.expire(redisKey, 86400);
 
-    // 🗃️ PostgreSQL: Upsert
     const existing = await this.cartRepository.findOne({ where: { userId, productId } });
     if (existing) {
       await this.cartRepository.update({ id: existing.id }, {
@@ -98,22 +96,22 @@ async handleAddToCart(body: { userId: string; productId: string; quantity: numbe
       await this.cartRepository.save(cartItemData);
     }
 
-    // 📣 Kafka event
     this.kafkaClient.emit('cart.item.added', {
       userId,
       productId,
       quantity,
+      packageType,
+      price: userPrice,
       status: 'success',
       message: 'Cart item added or updated',
       timestamp: now.toISOString(),
     });
 
-    // ✅ Return
     return {
       statusCode: 200,
       error: false,
       message: 'Item successfully added in cart',
-      data: { userId, productId, quantity },
+      data: { userId, productId, quantity, packageType, price: userPrice },
     };
 
   } catch (error) {
@@ -132,6 +130,7 @@ async handleAddToCart(body: { userId: string; productId: string; quantity: numbe
     };
   }
 }
+
 async handleGetCartItems(userId: string): Promise<any> {
   const redis = this.redisService.getClient();
   const redisKey = `cart:${userId}`;
