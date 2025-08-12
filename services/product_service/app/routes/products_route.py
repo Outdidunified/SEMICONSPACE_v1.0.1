@@ -16,6 +16,7 @@ from typing import Optional
 from bson import ObjectId
 from app.kafka.kafka_producer import send_event
 import asyncio
+from datetime import datetime
 router = APIRouter(prefix="/product")
 
 DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
@@ -66,10 +67,11 @@ async def sync_digikey_product(payload: dict):
                 continue
 
             merged_data = {**product_basic, **details_data["product"]}
+            print(f"Synced product: {merged_data}")
             result= await fetch_and_sync_semicon_product(merged_data)
             synced += 1
             result_main.append(result)
-           # print(f"Synced product: {merged_data}")
+           
     return {
         "status": "success",
         "message": f"Sync completed: {synced} products synced, {skipped} products skipped (already exists or failed).",
@@ -159,8 +161,6 @@ async def get_all_products(
     except Exception as e:
         print(f"Error fetching products: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
-    
-
 
 @router.get("/{product_id}/productdetails")
 async def get_product_by_id(product_id: str):
@@ -174,39 +174,37 @@ async def get_product_by_id(product_id: str):
             product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
 
         if not product:
-            print(f"Prodppppppp found for product_id: {product_id}")
+            print(f"No product found for product_id: {product_id}")
             raise HTTPException(status_code=404, detail="Product not found")
 
         collection = engine.get_collection(SemiconProduct)
-
-        # Use direct queries to build product details (Atlas-compatible approach)
-        print(f"🔍 Building product details for: {product.semicon_part_number}")
-        
         db = collection.database
-        
+
         # Step 1: Get product details from semicon_product_details collection
         product_details_doc = await db.semicon_product_details.find_one({
             "semicon_part_number": product.semicon_part_number
         })
-        
+
         # Step 2: Get vendor products
         vendor_products = await db.vendor_products.find({
             "semicon_part_number": product.semicon_part_number
         }).to_list(length=None)
         
         print(f"📦 Found {len(vendor_products)} vendor products")
-        
-        # Step 3: Get product variants
+
+        # Step 3: Get product variants and parameters
         product_variants = []
+        all_parameters = []
         if vendor_products:
-            # Collect all variant IDs from vendor products
-            all_variant_ids = []
-            for vp in vendor_products:
-                variant_ids = vp.get('product_variants', [])
-                all_variant_ids.extend(variant_ids)
-            
+    # Collect all variant IDs
+            all_variant_ids = [vid for vp in vendor_products for vid in vp.get('product_variants', [])]
+            # Just use stored parameters
+            all_parameters = [p for vp in vendor_products for p in vp.get('parameters', [])]
+
             print(f"🔍 Looking for {len(all_variant_ids)} product variants: {all_variant_ids}")
-            
+
+            print(f"🔍 Looking for {len(all_variant_ids)} product variants: {all_variant_ids}")
+
             if all_variant_ids:
                 # Get product variants
                 variants = await db.product_variants.find({
@@ -214,7 +212,7 @@ async def get_product_by_id(product_id: str):
                 }).to_list(length=None)
                 
                 print(f"✅ Found {len(variants)} product variants")
-                
+
                 # Step 4: Get pricing details for each variant
                 for variant in variants:
                     pricing_ids = variant.get('semicon_product_variant_pricing_id', [])
@@ -227,10 +225,10 @@ async def get_product_by_id(product_id: str):
                         variant['pricing_details'] = pricing_docs[0] if pricing_docs else None
                 
                 product_variants = variants
-        
-        # Step 5: Construct the final result structure (matching JavaScript output)
+
+        # Step 5: Construct the final result structure
         result_doc = {
-            "_id": product.id,
+            "_id": str(product.id),
             "semicon_part_number": product.semicon_part_number,
             "name": product.name,
             "description": product.description,
@@ -243,10 +241,9 @@ async def get_product_by_id(product_id: str):
             "manufacturerPartNumber": product.manufacturerPartNumber,
             "manufacturer_name": product.manufacturer_name,
             "created_by": product.created_by,
-            "created_date": product.created_date,
+            "created_date": product.created_date.isoformat() if isinstance(product.created_date, datetime) else product.created_date,
             "modified_by": product.modified_by,
-            "modified_date": product.modified_date,
-            
+            "modified_date": product.modified_date.isoformat() if isinstance(product.modified_date, datetime) else product.modified_date,
             # Add structured data from lookups
             "Category": product_details_doc.get("Category") if product_details_doc else None,
             "Description": {
@@ -271,14 +268,15 @@ async def get_product_by_id(product_id: str):
                 "OtherNames": product_details_doc.get("OtherNames", []) if product_details_doc else [],
                 "ProductStatus": product_details_doc.get("ProductStatus") if product_details_doc else None
             },
-            "VendorProducts": vendor_products,
+            "VendorProducts": [
+                {**vp, "parameters": all_parameters} for vp in vendor_products
+            ],  # Include parameters in each VendorProduct
             "ProductVariants": product_variants
         }
-        
-        product_details = [result_doc]
-        print(f"✅ Product details built successfully - VendorProducts: {len(vendor_products)}, ProductVariants: {len(product_variants)}")
 
-        if not product_details:
+        print(f"✅ Product details built successfully - VendorProducts: {len(vendor_products)}, ProductVariants: {len(product_variants)}, Parameters: {len(all_parameters)}")
+
+        if not (product_details_doc or vendor_products or product_variants):
             print(f"No detailed data found for semicon_part_number: {product.semicon_part_number}")
             return {
                 "error": False,
@@ -287,13 +285,15 @@ async def get_product_by_id(product_id: str):
                     "id": str(product.id),
                     "name": product.name,
                     "semicon_part_number": product.semicon_part_number,
+                    "imageurl": product.image_url,
+                    "datasheet": product.datasheet_url,
                     "vendor_details": getattr(product, "vendor_details", []),
                     "semicon_category_id": getattr(product, "semicon_category_id", None),
                     "semicon_child_category_id": getattr(product, "semicon_child_category_id", None),
                     "created_by": product.created_by,
-                    "created_date": product.created_date,
+                    "created_date": product.created_date.isoformat() if isinstance(product.created_date, datetime) else product.created_date,
                     "modified_by": product.modified_by,
-                    "modified_date": product.modified_date,
+                    "modified_date": product.modified_date.isoformat() if isinstance(product.modified_date, datetime) else product.modified_date,
                     "status": product.status,
                     "detailed_info": {
                         "Category": None,
@@ -325,40 +325,30 @@ async def get_product_by_id(product_id: str):
                 }
             }
 
-        details = product_details[0]
-        
-        # Handle empty vendor products and product variants
-        vendor_products = details.get("VendorProducts", [])
-        product_variants = details.get("ProductVariants", [])
-        
-        # Filter out null values from the sets
-        vendor_products = [vp for vp in vendor_products if vp is not None]
-        product_variants = [pv for pv in product_variants if pv is not None]
-        
-        print(f"🔧 Final counts - VendorProducts: {len(vendor_products)}, ProductVariants: {len(product_variants)}")
-
         return {
             "error": False,
             "message": "Product retrieved successfully",
             "data": {
-                "id": str(product.id),
-                "name": details.get("name"),
-                "semicon_part_number": details.get("semicon_part_number"),
+                "id": result_doc["_id"],
+                "name": result_doc["name"],
+                "semicon_part_number": result_doc["semicon_part_number"],
+                "imageurl": result_doc["image_url"],
+                "datasheet": result_doc["datasheet_url"],
                 "vendor_details": getattr(product, "vendor_details", []),
                 "semicon_category_id": getattr(product, "semicon_category_id", None),
                 "semicon_child_category_id": getattr(product, "semicon_child_category_id", None),
-                "created_by": details.get("created_by"),
-                "created_date": details.get("created_date"),
-                "modified_by": details.get("modified_by"),
-                "modified_date": details.get("modified_date"),
-                "status": details.get("status"),
+                "created_by": result_doc["created_by"],
+                "created_date": result_doc["created_date"],
+                "modified_by": result_doc["modified_by"],
+                "modified_date": result_doc["modified_date"],
+                "status": result_doc["status"],
                 "detailed_info": {
-                    "Category": details.get("Category"),
-                    "Description": details.get("Description"),
-                    "Manufacturer": details.get("Manufacturer"),
-                    "ProductDetails": details.get("ProductDetails"),
-                    "VendorProducts": vendor_products,
-                    "ProductVariants": product_variants
+                    "Category": result_doc["Category"],
+                    "Description": result_doc["Description"],
+                    "Manufacturer": result_doc["Manufacturer"],
+                    "ProductDetails": result_doc["ProductDetails"],
+                    "VendorProducts": result_doc["VendorProducts"],
+                    "ProductVariants": result_doc["ProductVariants"]
                 }
             }
         }
@@ -424,13 +414,13 @@ async def search_products(
         raise HTTPException(status_code=500, detail=f"Error searching products: {str(e)}")
 
 
-@router.get("/count/total")
-async def get_total_products():
-    try:
-        count = await engine.count(SemiconProduct)
-        return {"total_products": count}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
+# @router.get("/count/total")
+# async def get_total_products():
+#     try:
+#         count = await engine.count(SemiconProduct)
+#         return {"total_products": count}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
 
 
 @router.get("/quantity/check/{product_id}/{quantity}")
@@ -548,20 +538,12 @@ async def get_total_products():
         raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
 # Fetch details for one product with URL-encoding
 async def fetch_details(part_number: str, client: httpx.AsyncClient):
-    encoded_part_number = quote(part_number)
-    details_url = f"http://172.232.110.10:8003/product/{encoded_part_number}/productdetails"
-    try:
-        resp = await client.get(details_url, timeout=httpx.Timeout(180.0, connect=5.0))  # 10s total timeout, 5s connect
-        resp.raise_for_status()
-        data = resp.json()
-      #  print(f"Fetched details for {part_number}: {data}")  # Log actual data returned
-        return data
-    except httpx.TimeoutException as e:
-        print(f"[WARN] Timeout fetching details for {part_number}: {e}")
-        return {"semicon_part_number": part_number, "error": "Timeout"}
-    except Exception as e:
-        print(f"[WARN] Failed to fetch details for {part_number}: {repr(e)}")
-        return {"semicon_part_number": part_number, "error": str(e)}
+    #encoded_part_number = quote(part_number)
+    collection2 = engine.get_collection(SemiconProduct)
+    print(f"Fetching details for part number: {part_number}")
+    products = await collection2.find_one({"semicon_part_number": part_number})
+    return products if products else {"semicon_part_number": part_number, "error": "Product not found"}
+    
 
 async def safe_fetch_details(part_number: str, client: httpx.AsyncClient):
     try:
@@ -614,7 +596,7 @@ async def search_and_get_details(query: str):
                 }
 
             # 3. DigiKey sync
-            digi_url = "http://172.232.110.10:8003/product/sync/digikey"
+            digi_url = "http://localhost:8002/product/sync/digikey"
             digi_products = []
 
             digi_resp = await client.post(digi_url, json={"query": query})

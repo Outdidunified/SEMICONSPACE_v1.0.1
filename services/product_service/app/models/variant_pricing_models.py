@@ -12,7 +12,7 @@ class PricingTier(BaseModel):
 
 class SemiconProductVariantPricing(Model):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_field=True)
-    package_type: Optional[str]
+    #package_type: Optional[str]
     minimum_order_quantity: int
     pricing: List[PricingTier] # assuming it's just an array of numbers, else use List[dict]
     created_by: str
