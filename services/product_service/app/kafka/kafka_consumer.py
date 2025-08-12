@@ -63,13 +63,12 @@ async def start_consumer():
     try:
         async for msg in consumer:
             event = msg.value
-            if event is None:
-                logger.warning("⚠️ Received None event, skipping")
+            if not event:
+                logger.warning("⚠️ Received empty or None event, skipping")
                 continue
 
             logger.info(f"Received event: {event}")
-            data = event.get("data", {})
-            items = data.get("items", [])
+            items = event.get("items", [])
 
             if not items:
                 logger.warning("⚠️ No items found in payment event, skipping stock update")

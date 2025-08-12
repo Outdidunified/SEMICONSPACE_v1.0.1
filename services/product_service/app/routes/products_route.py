@@ -358,60 +358,6 @@ async def get_product_by_id(product_id: str):
     except Exception as e:
         print(f"Error fetching product {product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
-    
-@router.get("/search/advanced")
-async def search_products(
-    q: Optional[str] = Query(None, description="General search term"),
-    manufacturer: Optional[str] = Query(None, description="Manufacturer name"),
-    min_price: Optional[float] = Query(None, ge=0, description="Minimum price"),
-    max_price: Optional[float] = Query(None, ge=0, description="Maximum price"),
-    category: Optional[str] = Query(None, description="Category ID"),
-    in_stock: Optional[bool] = Query(None, description="Filter by stock availability"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200)
-):
-    try:
-        query = QueryExpression()
-
-        if q:
-            query &= (
-                SemiconProduct.name.contains(q, case_sensitive=False) |
-                SemiconProduct.semicon_part_number.contains(q, case_sensitive=False) |
-                SemiconProduct.manufacturer_part_number.contains(q, case_sensitive=False) |
-                SemiconProduct.description.contains(q, case_sensitive=False)
-            )
-
-        if manufacturer:
-            query &= SemiconProduct.vendor_details.contains(manufacturer)
-
-        if category:
-            query &= SemiconProduct.semicon_category_id == category
-
-        if min_price is not None:
-            query &= SemiconProduct.unit_price >= min_price
-
-        if max_price is not None:
-            query &= SemiconProduct.unit_price <= max_price
-
-        if in_stock is not None:
-            if in_stock:
-                query &= SemiconProduct.quantity_available > 0
-            else:
-                query &= (SemiconProduct.quantity_available == 0) | (SemiconProduct.quantity_available == None)
-
-        products = await engine.find(SemiconProduct, query, skip=skip, limit=limit)
-        total_count = await engine.count(SemiconProduct, query)
-
-        return {
-            "products": products,
-            "total": total_count,
-            "skip": skip,
-            "limit": limit,
-            "message": f"Found {len(products)} products"
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error searching products: {str(e)}")
 
 
 # @router.get("/count/total")

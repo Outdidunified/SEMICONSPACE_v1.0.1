@@ -345,8 +345,9 @@ async def get_products_by_category_and_subcategory(category_id: str, child_categ
         raise HTTPException(
             status_code=200,
             detail={
-                "status": "failure",
-                "message": "No products found for this category & subcategory"
+                 "error": False,
+                 "message": "No products found for this category & subcategory",
+                 "data": []
             }
         )
 
