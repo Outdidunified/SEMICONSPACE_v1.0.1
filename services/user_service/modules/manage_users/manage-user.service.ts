@@ -77,6 +77,7 @@ async create(dto: CreateManageUserDto) {
       first_name: new_user.first_name,
       last_name: new_user.last_name,
       email: new_user.email,
+      password:new_user.password,
       phone: new_user.phone,
       role: new_user.role,
       role_id: new_user.role_id,
