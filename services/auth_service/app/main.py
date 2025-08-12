@@ -12,6 +12,7 @@ from app.Admin_login import router as admin_login_router
 #from app.Productmanager_login import router as product_manager_login_router
 #from app.UserManager import router as user_manager_login_router
 from app.kafka_producer import start_kafka, stop_kafka
+from app.kafka_consumer import start_consumer
 from app.database import engine, Base
 
 logging.basicConfig(level=logging.INFO)
@@ -19,14 +20,14 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Start Kafka (optional, non-blocking failure)
+    # Start Kafka producer
     try:
         await start_kafka()
         logger.info("✅ Kafka producer started")
     except Exception as e:
         logger.warning(f"⚠️ Kafka startup failed: {e}. Continuing without Kafka.")
 
-    # 2. Wait until DB is ready
+    # Wait for DB
     attempt = 0
     while True:
         try:
@@ -38,19 +39,15 @@ async def lifespan(app: FastAPI):
             attempt += 1
             logger.warning(f"⏳ Attempt {attempt}: Waiting for DB to be ready... ({e})")
             await asyncio.sleep(5)
-        except Exception as e:
-            logger.error(f"❌ Unexpected DB error: {e}")
-            await asyncio.sleep(5)
 
-    # 3. Startup complete
+    # Start Kafka consumer task
+    consumer_task = asyncio.create_task(start_consumer())
+
     yield
 
-    # 4. Kafka cleanup
-    try:
-        await stop_kafka()
-        logger.info("🛑 Kafka producer stopped")
-    except Exception as e:
-        logger.warning(f"⚠️ Kafka shutdown failed: {e}")
+    consumer_task.cancel()
+    await stop_kafka()
+    logger.info("🛑 Kafka producer stopped")
 
 # Initialize FastAPI
 app = FastAPI(lifespan=lifespan)
