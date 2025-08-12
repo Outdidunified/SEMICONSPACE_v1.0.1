@@ -1,4 +1,3 @@
-// services/order_service/modules/order/dto/create-order.dto.ts
 import { 
   IsArray, 
   IsNumber, 
@@ -85,7 +84,10 @@ export class CreateOrderDto {
   @IsString()
   razorpayPaymentId?: string;
 
- 
+  @IsOptional()
+  @IsString()
+  package_type?: string;  // <-- added here
+
   @IsObject()
   @ValidateNested()
   @Type(() => BillingDetailsDto)
