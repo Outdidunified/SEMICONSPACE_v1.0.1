@@ -46,7 +46,7 @@ export class ManageUser extends Model {
   modified_by: string;
 
   @Column({ type: DataType.DATE, allowNull: true })
-  modified_at: Date;
+  modified_date: Date;
 
 
 }
