@@ -14,7 +14,7 @@ import {
 import { CartService } from './cart.service';
 import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { IsInt, NotEquals } from 'class-validator';
+import { IsInt, NotEquals, IsOptional } from 'class-validator';
 
 export class AddToCartDto {
   @IsString()
@@ -29,6 +29,15 @@ export class AddToCartDto {
   @Min(1, { message: 'Quantity must be at least 1' })
   @Type(() => Number)
   quantity: number;
+
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  price: number;  // required, coming from user request
+
+  @IsOptional()
+  @IsString()
+  packageType?: string;
 }
 
 
