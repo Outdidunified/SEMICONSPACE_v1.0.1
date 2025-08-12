@@ -1,4 +1,5 @@
 //order model
+
 import { Column, DataType, Model, Table } from 'sequelize-typescript';
 
 @Table({ tableName: 'Order', timestamps: true })
