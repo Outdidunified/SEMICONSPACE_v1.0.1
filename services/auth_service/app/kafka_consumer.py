@@ -82,11 +82,11 @@ async def handle_user_created(data):
         
         # Parse created_at to datetime and make naive
         try:
-            created_at = isoparse(data["created_at"]).replace(tzinfo=None)
+            created_at = isoparse(data["created_at"]).replace(tzinfo=None)    
         except ValueError as e:
             logger.error(f"Invalid created_at format in user.created event: {data['created_at']}")
             return
-
+        #print(f"{data}")
         query = text("""
             INSERT INTO public.users
             ("userId", first_name, last_name, email, phone, password, role, role_id, created_at, created_by, status)

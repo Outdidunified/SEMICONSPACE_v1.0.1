@@ -28,3 +28,4 @@ class UserRole(Base):
 
     role_id = Column(Integer, primary_key=True, nullable=False)
     role_name = Column(String, nullable=False)
+    status = Column(Boolean, default=True)

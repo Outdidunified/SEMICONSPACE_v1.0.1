@@ -40,13 +40,20 @@ async def register_user(request: RegisterRequest, db: AsyncSession = Depends(dat
         raise HTTPException(status_code=400, detail="Email or phone already registered")
 
     role_query = await db.execute(
-        select(models.UserRole.role_name).where(models.UserRole.role_id == request.role_id)
+        select(models.UserRole.role_name, models.UserRole.status)
+        .where(models.UserRole.role_id == request.role_id)
     )
     role_row = role_query.first()
+
     if not role_row:
         raise HTTPException(status_code=400, detail=f"Role ID '{request.role_id}' not found")
 
-    role_name = role_row[0]
+    role_name, role_status = role_row
+    print(role_status)
+
+    # Check if role status is True (active)
+    if role_status is not True:
+        raise HTTPException(status_code=400, detail=f"Role ID '{request.role_id}' is inactive and cannot be assigned")
 
     new_user = models.User(
         first_name=request.first_name,
