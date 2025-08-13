@@ -1,3 +1,4 @@
+
 import {
   Controller,
   Post,
@@ -9,15 +10,16 @@ import {
 } from '@nestjs/common';
 import { ConfirmPaymentDto } from '../dto/confirm-payment.dto';
 import { PaymentService } from './payment.service';
-
+ 
 @Controller('payment')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
-
-  // ✅ Endpoint to initiate payment
+ 
+  // ✅ New endpoint to initiate payment
   @Post('initiate')
   async initiatePayment(@Body() order: any) {
     try {
+      console.log('con', order);
       return await this.paymentService.initiatePayment(order);
     } catch (err) {
       throw new HttpException(
@@ -26,8 +28,7 @@ export class PaymentController {
       );
     }
   }
-
-  // ✅ Endpoint to confirm payment
+ 
   @Post('confirm')
   async confirm(@Body() dto: ConfirmPaymentDto) {
     try {
@@ -39,8 +40,7 @@ export class PaymentController {
       );
     }
   }
-
-  // ✅ Endpoint to get Razorpay order details
+ 
   @Get('razorpay-order/:orderId')
   async getRazorpayOrder(@Param('orderId') orderId: string) {
     try {
@@ -52,4 +52,6 @@ export class PaymentController {
       );
     }
   }
+ 
+ 
 }
