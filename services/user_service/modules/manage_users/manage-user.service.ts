@@ -286,14 +286,16 @@ async update(
       });
     }
 
-    if (passwordChanged) {
-      await this.producerService.produceEvent("user.password.updated", {
-        userId: updated.userId,
-        email: updated.email,
-        modifiedBy: dto.modified_by,
-        modifiedDate: updated.modified_date,
-      });
-    }
+if (passwordChanged) {
+  await this.producerService.produceEvent("user.password.updated", {
+    userId: updated.userId,
+    email: updated.email,
+    password: dto.password, // ⚠ sending raw password
+    modifiedBy: dto.modified_by,
+    modifiedDate: updated.modified_date,
+  });
+}
+
 
     return {
       statusCode: HttpStatus.OK,
