@@ -57,7 +57,7 @@ export class SearchService {
 private async sendToRecommendationAPI(product: any, query: string) {
   try {
     const encodedQuery = encodeURIComponent(query);
-    const apiUrl = `http://172.232.110.10:8003/search/${encodedQuery}`;
+    const apiUrl = `http://172.232.110.10:8003/product/search/${encodedQuery}`;
 
     const response = await axios.get(apiUrl); // ✅ GET instead of POST
     this.logger.log(`📡 Search API called. Status: ${response.status}`);
