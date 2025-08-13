@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Payment } from './payment.model';
 import { ConfirmPaymentDto } from '../dto/confirm-payment.dto';
 import { KafkaProducerService } from '../../kafka/producer.service';
+import * as crypto from 'crypto';
 import Razorpay = require('razorpay');
 import * as dotenv from 'dotenv';
 
@@ -17,23 +18,26 @@ const razorpay = new Razorpay({
 export class PaymentService {
     private readonly logger = new Logger(PaymentService.name);
 
-    constructor(private readonly kafkaProducer: KafkaProducerService) {}
+    constructor(private readonly kafkaProducer: KafkaProducerService) { }
 
     async initiatePayment(order: any) {
         this.logger.log('Initiating payment for order:', order);
 
+        // ✅ Use the total exactly as stored
         let totalInRupees = Number(order.total);
-        if (isNaN(totalInRupees) || totalInRupees < 1) {
+
+        if (!totalInRupees || totalInRupees < 1) {
             this.logger.error(`Invalid order total received: ${order.total}`);
             throw new Error('Invalid order total: must be at least ₹1');
         }
 
-        // Fix to 2 decimal places
-        totalInRupees = Number(totalInRupees.toFixed(2));
+        const amountInPaise = Math.round(totalInRupees * 100);
+
+        this.logger.log(`Creating Razorpay order for ₹${totalInRupees} (${amountInPaise} paise)`);
 
         try {
             const rzpOrder = await razorpay.orders.create({
-                amount: totalInRupees, // Keep total in rupees
+                amount: amountInPaise, // ✅ integer in paise
                 currency: 'INR',
                 receipt: String(order.orderId),
             });
@@ -46,11 +50,12 @@ export class PaymentService {
                 razorpayOrderId: rzpOrder.id,
                 razorpayPaymentId: '',
                 status: 'pending',
-                total: totalInRupees, // store in rupees with 2 decimals
+                total: totalInRupees, // ✅ store in rupees exactly
                 items: order.items.map((item) => ({
                     productId: item.productId,
                     qty: item.qty,
-                    totalprice: Number((item.totalPrice ?? item.price * item.qty).toFixed(2)),
+                    totalprice:
+                        item.totalPrice ?? (item.price ? item.price * item.qty / 100 : 0), // convert paise → rupees if needed
                 })),
             });
 
@@ -70,7 +75,16 @@ export class PaymentService {
     }
 
     async confirmPayment(dto: ConfirmPaymentDto) {
-        const { razorpayOrderId, razorpayPaymentId } = dto;
+        const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = dto;
+
+        // const generatedSignature = crypto
+        //   .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+        //   .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        //   .digest('hex');
+        //
+        // if (generatedSignature !== razorpaySignature) {
+        //   throw new Error('Invalid signature');
+        // }
 
         const payment = await Payment.findOne({ where: { razorpayOrderId } });
         if (!payment) throw new Error('Payment record not found');
@@ -90,7 +104,7 @@ export class PaymentService {
             items: payment.items.map((item) => ({
                 productId: item.productId,
                 qty: item.qty,
-                totalprice: item.totalprice,
+                totalprice: item.totalprice, 
             })),
         });
 
@@ -125,7 +139,7 @@ export class PaymentService {
             razorpayOrderId: payment.razorpayOrderId,
             orderId: payment.orderId,
             userId: payment.userId,
-            amount: payment.total, // already fixed to 2 decimals
+            amount: payment.total,
             currency: 'INR',
         };
     }
