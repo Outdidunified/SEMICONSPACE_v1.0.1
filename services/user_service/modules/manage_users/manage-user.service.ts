@@ -176,8 +176,7 @@ async create(dto: CreateManageUserDto) {
       };
     }
   }
-
-  // ✏️ Update user
+// ✏️ Update user
 async update(
   userId: string,
   dto: UpdateManageUserDto & { modified_by: string }
@@ -202,6 +201,7 @@ async update(
     }
 
     let phoneChanged = false;
+    let passwordChanged = false;
 
     // 📞 Phone uniqueness check if updated
     if (dto.phone && dto.phone !== profile.phone) {
@@ -221,6 +221,11 @@ async update(
       }
 
       phoneChanged = true;
+    }
+
+    // 🔑 Password change detection
+    if (dto.password && dto.password !== profile.password) {
+      passwordChanged = true;
     }
 
     // 📝 Detect general changes
@@ -281,6 +286,15 @@ async update(
       });
     }
 
+    if (passwordChanged) {
+      await this.producerService.produceEvent("user.password.updated", {
+        userId: updated.userId,
+        email: updated.email,
+        modifiedBy: dto.modified_by,
+        modifiedDate: updated.modified_date,
+      });
+    }
+
     return {
       statusCode: HttpStatus.OK,
       error: false,
@@ -288,7 +302,9 @@ async update(
         isStatusModified
           ? ` and status changed to ${dto.status ? "Active" : "Inactive"}`
           : ""
-      }${phoneChanged ? " and phone number updated" : ""}`,
+      }${phoneChanged ? " and phone number updated" : ""}${
+        passwordChanged ? " and password updated" : ""
+      }`,
       data: updated,
     };
   } catch (error) {
@@ -303,7 +319,6 @@ async update(
     };
   }
 }
-
 
   // // 🚦 Toggle user status
   // async toggleStatus(userId: string, status: boolean, modifiedBy: string) {
