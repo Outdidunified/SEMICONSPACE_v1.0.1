@@ -1,4 +1,3 @@
-// services/payment_service/modules/payment/payment.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Payment } from './payment.model';
 import { ConfirmPaymentDto } from '../dto/confirm-payment.dto';
@@ -37,7 +36,7 @@ export class PaymentService {
 
         try {
             const rzpOrder = await razorpay.orders.create({
-                amount: amountInPaise, // ✅ integer in paise
+                amount: amountInPaise, // integer in paise
                 currency: 'INR',
                 receipt: String(order.orderId),
             });
@@ -50,7 +49,7 @@ export class PaymentService {
                 razorpayOrderId: rzpOrder.id,
                 razorpayPaymentId: '',
                 status: 'pending',
-                total: totalInRupees, // ✅ store in rupees exactly
+                total: totalInRupees, // store in rupees exactly
                 items: order.items.map((item) => ({
                     productId: item.productId,
                     qty: item.qty,
@@ -77,6 +76,7 @@ export class PaymentService {
     async confirmPayment(dto: ConfirmPaymentDto) {
         const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = dto;
 
+        // Signature verification (optional)
         // const generatedSignature = crypto
         //   .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
         //   .update(`${razorpayOrderId}|${razorpayPaymentId}`)
@@ -104,7 +104,7 @@ export class PaymentService {
             items: payment.items.map((item) => ({
                 productId: item.productId,
                 qty: item.qty,
-                totalprice: item.totalprice, 
+                totalprice: item.totalprice,
             })),
         });
 
