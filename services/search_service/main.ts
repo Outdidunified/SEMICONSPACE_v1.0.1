@@ -3,15 +3,22 @@ import { AppModule } from './app.module';
 import { typesenseClient } from './modules/search/typesense.client';
 import * as dotenv from 'dotenv';
 
-dotenv.config(); // load .env config early
+dotenv.config();
 
 async function createSchemaIfNotExists() {
   try {
-    // Try to retrieve the collection
+    // Try retrieving the collection
     await typesenseClient.collections('products').retrieve();
     console.log('✅ Collection "products" already exists — skipping creation.');
   } catch (err: any) {
-    if (err?.httpStatus === 404) {
+    // Extract potential status codes or message
+    const statusCode =
+      err?.httpStatus ||
+      err?.httpStatusCode ||
+      err?.status ||
+      err?.statusCode;
+
+    if (statusCode === 404 || err?.message?.toLowerCase().includes('not found')) {
       console.log('⚠️ Collection "products" not found — creating...');
       try {
         await typesenseClient.collections().create({
