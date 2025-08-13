@@ -55,16 +55,16 @@ export class SearchService {
    * Send product to external API, query is injected into URL path
    */
 private async sendToRecommendationAPI(product: any, query: string) {
-    try {
-      const encodedQuery = encodeURIComponent(query);
-      const apiUrl = `http://172.232.110.10:8003/search/${encodedQuery}`;
-
-      const response = await axios.post(apiUrl, product);
-      this.logger.log(`📡 Sent to external API. Status: ${response.status}`);
-    } catch (error: any) {
-      this.logger.error(`❌ Failed to send to external API: ${error.message}`);
-    }
+  try {
+    const encodedQuery = encodeURIComponent(query);
+    const apiUrl = `http://172.232.110.10:8003/recommend/${encodedQuery}`;
+    const response = await axios.get(apiUrl, product); // ✅ matches POST
+    this.logger.log(`📡 Sent product to recommendations API. Status: ${response.status}`);
+  } catch (error: any) {
+    this.logger.error(`❌ Failed to send to recommendations API: ${error.message}`);
   }
+}
+
 
 
 
