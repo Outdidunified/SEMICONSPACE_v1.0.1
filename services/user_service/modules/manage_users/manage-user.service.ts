@@ -177,151 +177,256 @@ async create(dto: CreateManageUserDto) {
     }
   }
 // ✏️ Update user
+
+// ✏️ Update user
 async update(
   userId: string,
   dto: UpdateManageUserDto & { modified_by: string }
 ) {
   try {
+    // Validate userId format
+    if (!userId || userId.trim() === '') {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: "Invalid user ID provided",
+      };
+    }
+
+    // Validate modified_by
+    if (!dto.modified_by || dto.modified_by.trim() === '') {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: "Modified by field is required",
+      };
+    }
+
     const profile = await this.profileModel.findByPk(userId);
     if (!profile) {
       return {
         statusCode: HttpStatus.NOT_FOUND,
         error: true,
-        message: "Profile not found",
+        message: "User profile not found",
       };
     }
 
     // 🚫 Email immutability check
     if (dto.email && dto.email !== profile.email) {
       return {
-        statusCode: HttpStatus.BAD_REQUEST,
+        statusCode: HttpStatus.FORBIDDEN,
         error: true,
-        message: "Email cannot be updated",
+        message: "Email modification is not allowed",
       };
     }
 
     let phoneChanged = false;
     let passwordChanged = false;
+    let statusChanged = false;
 
-    // 📞 Phone uniqueness check if updated
-    if (dto.phone && dto.phone !== profile.phone) {
-      const existingPhone = await this.profileModel.findOne({
-        where: {
-          phone: dto.phone,
-          userId: { [Op.ne]: userId }, // Exclude current user
-        },
-      });
-
-      if (existingPhone) {
+    // 📞 Phone validation and uniqueness check
+    if (dto.phone !== undefined) {
+      if (dto.phone.trim() === '') {
         return {
-          statusCode: HttpStatus.CONFLICT,
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
           error: true,
-          message: "Phone number already in use",
+          message: "Phone number cannot be empty",
         };
       }
 
-      phoneChanged = true;
+      if (dto.phone !== profile.phone) {
+        const existingPhone = await this.profileModel.findOne({
+          where: {
+            phone: dto.phone,
+            userId: { [Op.ne]: userId },
+          },
+        });
+
+        if (existingPhone) {
+          return {
+            statusCode: HttpStatus.CONFLICT,
+            error: true,
+            message: "Phone number is already registered to another user",
+          };
+        }
+        phoneChanged = true;
+      }
     }
 
-    // 🔑 Password change detection
-    if (dto.password && dto.password !== profile.password) {
-      passwordChanged = true;
+    // 🔑 Password validation and change detection
+    if (dto.password !== undefined) {
+      if (dto.password.trim() === '') {
+        return {
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+          error: true,
+          message: "Password cannot be empty",
+        };
+      }
+
+      if (dto.password !== profile.password) {
+        passwordChanged = true;
+      }
     }
 
-    // 📝 Detect general changes
-    const isModified = [
+    // 🔄 Status validation and change detection
+    if (dto.status !== undefined) {
+      if (typeof dto.status !== 'boolean') {
+        return {
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+          error: true,
+          message: "Status must be a boolean value (true/false)",
+        };
+      }
+
+      if (dto.status !== profile.status) {
+        statusChanged = true;
+      }
+    }
+
+    // 📝 Detect general field changes
+    const fieldChanges = [
       "first_name",
       "last_name",
-      "phone",
-      "password",
       "role",
       "role_id",
     ].some((key) => dto[key] !== undefined && dto[key] !== profile[key]);
 
-    // 🔄 Detect status change
-    const isStatusModified =
-      typeof dto.status === "boolean" && dto.status !== profile.status;
+    const hasAnyChanges = fieldChanges || phoneChanged || passwordChanged || statusChanged;
 
-    if (!isModified && !isStatusModified) {
+    if (!hasAnyChanges) {
       return {
-        statusCode: HttpStatus.BAD_REQUEST,
+        statusCode: HttpStatus.NOT_MODIFIED,
         error: true,
-        message: "No changes detected",
+        message: "No changes detected in the provided data",
       };
     }
 
     // ✅ Perform update
-    await this.profileModel.update(
+    const updateResult = await this.profileModel.update(
       {
         ...dto,
-        email: profile.email, // Keep original email
+        email: profile.email, // Preserve original email
         modified_by: dto.modified_by,
         modified_date: new Date(),
       },
-      { where: { userId } }
+      { 
+        where: { userId },
+        returning: true
+      }
     );
 
+    if (updateResult[0] === 0) {
+      return {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: "Failed to update user profile",
+      };
+    }
+
     const updated = await this.profileModel.findByPk(userId);
-
-    // 📢 Produce Kafka events
-    if (isStatusModified) {
-      await this.producerService.produceEvent("user.status.updated", {
-        userId: updated.userId,
-        email: updated.email,
-        oldStatus: profile.status,
-        newStatus: updated.status,
-        modifiedBy: dto.modified_by,
-        modifiedDate: updated.modified_date,
-      });
+    if (!updated) {
+      return {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: "Updated profile could not be retrieved",
+      };
     }
 
+    // 📢 Produce Kafka events for specific changes
+    try {
+      if (statusChanged) {
+        await this.producerService.produceEvent("user.status.updated", {
+          userId: updated.userId,
+          email: updated.email,
+          oldStatus: profile.status,
+          newStatus: updated.status,
+          modifiedBy: dto.modified_by,
+          modifiedDate: updated.modified_date,
+        });
+      }
+
+      if (phoneChanged) {
+        await this.producerService.produceEvent("user.phone.updated", {
+          userId: updated.userId,
+          email: updated.email,
+          oldPhone: profile.phone,
+          newPhone: updated.phone,
+          modifiedBy: dto.modified_by,
+          modifiedDate: updated.modified_date,
+        });
+      }
+
+      if (passwordChanged) {
+        await this.producerService.produceEvent("user.password.updated", {
+          userId: updated.userId,
+          email: updated.email,
+          password: dto.password,
+          modifiedBy: dto.modified_by,
+          modifiedDate: updated.modified_date,
+        });
+      }
+    } catch (kafkaError) {
+      console.error("Kafka event publishing failed:", kafkaError);
+      // Continue execution - don't fail the update due to Kafka issues
+    }
+
+    // Build dynamic success message
+    const changeMessages = [];
+    if (statusChanged) {
+      changeMessages.push(`status changed to ${dto.status ? "Active" : "Inactive"}`);
+    }
     if (phoneChanged) {
-      await this.producerService.produceEvent("user.phone.updated", {
-        userId: updated.userId,
-        email: updated.email,
-        oldPhone: profile.phone,
-        newPhone: updated.phone,
-        modifiedBy: dto.modified_by,
-        modifiedDate: updated.modified_date,
-      });
+      changeMessages.push("phone number updated");
     }
-
-if (passwordChanged) {
-  await this.producerService.produceEvent("user.password.updated", {
-    userId: updated.userId,
-    email: updated.email,
-    password: dto.password, // ⚠ sending raw password
-    modifiedBy: dto.modified_by,
-    modifiedDate: updated.modified_date,
-  });
-}
-
+    if (passwordChanged) {
+      changeMessages.push("password updated");
+    }
+    if (fieldChanges) {
+      changeMessages.push("profile information updated");
+    }
 
     return {
       statusCode: HttpStatus.OK,
       error: false,
-      message: `Profile updated successfully${
-        isStatusModified
-          ? ` and status changed to ${dto.status ? "Active" : "Inactive"}`
-          : ""
-      }${phoneChanged ? " and phone number updated" : ""}${
-        passwordChanged ? " and password updated" : ""
-      }`,
+      message: `User profile updated successfully${changeMessages.length > 0 ? ` - ${changeMessages.join(", ")}` : ""}`,
       data: updated,
     };
+
   } catch (error) {
     console.error("Update error:", error);
+    
+    // Handle specific database errors
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return {
+        statusCode: HttpStatus.CONFLICT,
+        error: true,
+        message: "Unique constraint violation - data already exists",
+      };
+    }
+    
+    if (error.name === "SequelizeValidationError") {
+      return {
+        statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        error: true,
+        message: `Validation failed: ${error.message}`,
+      };
+    }
+    
+    if (error.name === "SequelizeDatabaseError") {
+      return {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: "Database operation failed",
+      };
+    }
+
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       error: true,
-      message:
-        error.name === "SequelizeUniqueConstraintError"
-          ? "Phone number already exists"
-          : "Failed to update profile",
+      message: "An unexpected error occurred during profile update",
     };
   }
 }
-
   // // 🚦 Toggle user status
   // async toggleStatus(userId: string, status: boolean, modifiedBy: string) {
   //   try {
