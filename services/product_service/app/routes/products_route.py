@@ -162,7 +162,7 @@ async def get_all_products(
         print(f"Error fetching products: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
 
-@router.get("/{product_id}/productdetails")
+@router.get("/{product_id:path}/productdetails")
 async def get_product_by_id(product_id: str):
     try:
         # Try to find product by UUID or semicon_part_number
@@ -830,7 +830,7 @@ async def get_all_counts():
 #                 "semicon_part_number": semicon_part_number
 #             }
 #         )
-@router.get("/quantity-price/check/{semicon_part_number}/{quantity}")
+@router.get("/quantity-price/check/{semicon_part_number:path}/{quantity}")
 async def check_product_availability(semicon_part_number: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
     """
     Check if a product exists, has sufficient quantity available, and calculate the total price using semicon_part_number (excluding Digi-Reel®).
