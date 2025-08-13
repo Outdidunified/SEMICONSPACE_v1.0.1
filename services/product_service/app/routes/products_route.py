@@ -342,6 +342,7 @@ async def get_product_by_id(product_id: str):
                 "modified_by": result_doc["modified_by"],
                 "modified_date": result_doc["modified_date"],
                 "status": result_doc["status"],
+                "quantity_available": result_doc["quantity_available"],
                 "detailed_info": {
                     "Category": result_doc["Category"],
                     "Description": result_doc["Description"],
