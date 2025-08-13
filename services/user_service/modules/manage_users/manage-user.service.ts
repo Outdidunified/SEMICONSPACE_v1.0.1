@@ -86,7 +86,7 @@ async create(dto: CreateManageUserDto) {
     });
 
     return {
-      statusCode: HttpStatus.CREATED,
+      statusCode: HttpStatus.OK,
       error: false,
       message: 'User created successfully',
       data: new_user,
