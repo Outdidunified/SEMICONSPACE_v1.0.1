@@ -1,5 +1,3 @@
-//order model
-
 import { Column, DataType, Model, Table } from 'sequelize-typescript';
 
 @Table({ tableName: 'Order', timestamps: true })
@@ -11,7 +9,16 @@ export class Order extends Model {
   userId!: string;
 
   @Column(DataType.JSONB)
-  items!: Array<{ productId: string; name: string; qty: number; price: number; totalPrice: number }>;
+  items!: Array<{
+    productId: string;
+    name: string;
+    qty: number;
+    price: number;
+    totalPrice: number;
+    package_type?: string;
+    manufacturerPartNumber?: string;
+    manufacturerName?: string;
+  }>;
 
   @Column(DataType.FLOAT)
   subtotal!: number;
@@ -47,8 +54,7 @@ export class Order extends Model {
   @Column(DataType.STRING)
   razorpayPaymentId!: string;
 
-  @Column({ type: DataType.STRING, allowNull: true, field: 'package_type' })
-  packageType?: string;
+  // ⛔ Removed top-level packageType column
 
   @Column({ type: DataType.DATE, field: 'confirmedat', allowNull: true })
   confirmedAt?: Date;

@@ -1,5 +1,3 @@
-//
-//
 import { 
   IsArray, 
   IsNumber, 
@@ -26,6 +24,18 @@ class OrderItemDto {
 
   @IsNumber()
   totalPrice!: number;
+
+  @IsOptional()
+  @IsString()
+  package_type?: string;
+
+  @IsOptional()
+  @IsString()
+  manufacturerPartNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  manufacturerName?: string;
 }
 
 class BillingDetailsDto {
@@ -85,10 +95,6 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   razorpayPaymentId?: string;
-
-  @IsOptional()
-  @IsString()
-  package_type?: string;  // <-- added here
 
   @IsObject()
   @ValidateNested()
