@@ -11,15 +11,18 @@ export class SearchService {
    */
   async createOrUpdateProduct(product: any) {
     try {
-      // Ensure required fields exist including semicon_part_number
+      // Ensure required fields exist including manufacturer_part_number
       if (
         !product.productname ||
         !product.category ||
         !product.manufacturer ||
         !product.subcategory ||
-        !product.semicon_part_number
+        !product.semicon_part_number ||
+        !product.manufacturer_part_number
       ) {
-        this.logger.warn('⚠️ Missing required product fields including semicon_part_number. Skipping save to Typesense.');
+        this.logger.warn(
+          '⚠️ Missing required product fields including manufacturer_part_number. Skipping save to Typesense.'
+        );
         return;
       }
 
@@ -30,6 +33,7 @@ export class SearchService {
         manufacturer: product.manufacturer,
         subcategory: product.subcategory,
         semicon_part_number: product.semicon_part_number,
+        manufacturer_part_number: product.manufacturer_part_number,
       };
 
       // Store in Typesense
@@ -40,9 +44,8 @@ export class SearchService {
 
       this.logger.log(`✅ Product upserted to Typesense: ${product.productname}`);
 
-      // Send to external recommendations API with query param as productname
+      // Send to external recommendations API
       await this.sendToRecommendationAPI(document, product.productname);
-
     } catch (err: any) {
       this.logger.error(`❌ Error in createOrUpdateProduct: ${err.message}`, err.stack);
     }
@@ -51,20 +54,19 @@ export class SearchService {
   /**
    * Send product to external API, query is injected into URL path
    */
-  private async sendToRecommendationAPI(product: any, query: string) {
+private async sendToRecommendationAPI(product: any, query: string) {
     try {
-      // URL encode query for safety
       const encodedQuery = encodeURIComponent(query);
+      const apiUrl = `http://172.232.110.10:8003/search/${encodedQuery}`;
 
-      const apiUrl = `http://172.232.110.10:8003/product/search/${encodedQuery}`;
-
-      const response = await axios.get(apiUrl, product);
-
+      const response = await axios.post(apiUrl, product);
       this.logger.log(`📡 Sent to external API. Status: ${response.status}`);
     } catch (error: any) {
       this.logger.error(`❌ Failed to send to external API: ${error.message}`);
     }
   }
+
+
 
   /**
    * Search products in Typesense
@@ -73,10 +75,10 @@ export class SearchService {
     try {
       const searchParams = {
         q: query,
-        query_by: 'productname,category,manufacturer,subcategory,semicon_part_number',
+        query_by: 'productname,category,manufacturer,subcategory,semicon_part_number,manufacturer_part_number',
         prefix: true,
         num_typos: 6,
-        per_page: 250, // maximum allowed
+        per_page: 250,
       };
 
       const result = await typesenseClient
@@ -98,7 +100,7 @@ export class SearchService {
    * Generate unique ID for Typesense
    */
   private generateId(product: any): string {
-    return `${product.productname}-${product.manufacturer}-${product.semicon_part_number}`
+    return `${product.productname}-${product.manufacturer}-${product.semicon_part_number}-${product.manufacturer_part_number}`
       .toLowerCase()
       .replace(/\s+/g, '-');
   }

@@ -12,26 +12,27 @@ async function createSchemaIfNotExists() {
     console.log('✅ Collection "products" already exists — skipping creation.');
   } catch (err: any) {
     if (err.httpStatus === 404) {
-      // Collection doesn't exist, create it
       try {
         await typesenseClient.collections().create({
-          name: 'products',
-          fields: [
-            { name: 'id', type: 'string' },
-            { name: 'productname', type: 'string' },
-            { name: 'category', type: 'string', facet: true },
-            { name: 'manufacturer', type: 'string', facet: true },
-            { name: 'subcategory', type: 'string', facet: true },
-            { name: 'semicon_part_number', type: 'string', facet: true },
-          ],
-        });
-        console.log('✅ Created new Typesense collection "products".');
+  name: 'products',
+  fields: [
+    { name: 'id', type: 'string' },
+    { name: 'productname', type: 'string' },
+    { name: 'category', type: 'string', facet: true },
+    { name: 'manufacturer', type: 'string', facet: true },
+    { name: 'subcategory', type: 'string', facet: true },
+    { name: 'semicon_part_number', type: 'string', facet: true },
+    { name: 'manufacturer_part_number', type: 'string', facet: true },
+  ],
+});
+
+        console.log(' Created new Typesense collection "products".');
       } catch (createErr) {
-        console.error('❌ Failed to create schema:', createErr);
+        console.error(' Failed to create schema:', createErr);
         throw createErr;
       }
     } else {
-      console.error('❌ Failed to check collection existence:', err);
+      console.error(' Failed to check collection existence:', err);
       throw err;
     }
   }
