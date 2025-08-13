@@ -193,7 +193,10 @@ export class ManagerOrderService {
 
 async getAnalytics() {
   try {
-    const totalOrders = await this.orderModel.count();
+    // ✅ Total orders excluding pending
+    const totalOrders = await this.orderModel.count({
+      where: { status: { [Op.ne]: 'pending' } }
+    });
 
     const ordersByStatus = await this.orderModel.findAll({
       attributes: ["status", [fn("COUNT", col("status")), "count"]],
