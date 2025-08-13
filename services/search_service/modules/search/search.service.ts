@@ -57,13 +57,15 @@ export class SearchService {
 private async sendToRecommendationAPI(product: any, query: string) {
   try {
     const encodedQuery = encodeURIComponent(query);
-    const apiUrl = `http://172.232.110.10:8003/recommend/${encodedQuery}`;
-    const response = await axios.get(apiUrl, product); // ✅ matches POST
-    this.logger.log(`📡 Sent product to recommendations API. Status: ${response.status}`);
+    const apiUrl = `http://172.232.110.10:8003/search/${encodedQuery}`;
+
+    const response = await axios.get(apiUrl); // ✅ GET instead of POST
+    this.logger.log(`📡 Search API called. Status: ${response.status}`);
   } catch (error: any) {
-    this.logger.error(`❌ Failed to send to recommendations API: ${error.message}`);
+    this.logger.error(`❌ Failed to call Search API: ${error.message}`);
   }
 }
+
 
 
 
