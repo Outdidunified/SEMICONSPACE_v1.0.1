@@ -369,109 +369,109 @@ async def get_product_by_id(product_id: str):
 #         raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
 
 
-@router.get("/quantity/check/{product_id}/{quantity}")
-async def check_product_availability(product_id: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
-    """
-    Check if a product exists and has sufficient quantity available.
+# @router.get("/quantity/check/{product_id}/{quantity}")
+# async def check_product_availability(product_id: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
+#     """
+#     Check if a product exists and has sufficient quantity available.
     
-    Args:
-        product_id: The product ID (UUID) or semicon_part_number
-        quantity: The requested quantity to check
+#     Args:
+#         product_id: The product ID (UUID) or semicon_part_number
+#         quantity: The requested quantity to check
         
-    Returns:
-        Product details if available, or error message if not found/insufficient quantity
-    """
-    try:
-        # Validate quantity
-        if quantity <= 0:
-            raise HTTPException(
-                status_code=400, 
-                detail={"error": True, "message": "Quantity must be greater than 0"}
-            )
+#     Returns:
+#         Product details if available, or error message if not found/insufficient quantity
+#     """
+#     try:
+#         # Validate quantity
+#         if quantity <= 0:
+#             raise HTTPException(
+#                 status_code=400, 
+#                 detail={"error": True, "message": "Quantity must be greater than 0"}
+#             )
         
-        # Find product by ID or semicon_part_number
-        product = None
+#         # Find product by ID or semicon_part_number
+#         product = None
         
-        # Try as UUID first
-        try:
-            product_uuid = UUID(product_id)
-            product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
-        except ValueError:
-            # If not UUID, try as semicon_part_number
-            product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
+#         # Try as UUID first
+#         try:
+#             product_uuid = UUID(product_id)
+#             product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
+#         except ValueError:
+#             # If not UUID, try as semicon_part_number
+#             product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
         
-        # Check if product exists
-        if not product:
-            raise HTTPException(
-                status_code=404, 
-                detail={
-                    "error": True, 
-                    "message": "Product not found",
-                    "product_id": product_id
-                }
-            )
+#         # Check if product exists
+#         if not product:
+#             raise HTTPException(
+#                 status_code=404, 
+#                 detail={
+#                     "error": True, 
+#                     "message": "Product not found",
+#                     "product_id": product_id
+#                 }
+#             )
         
-        # Check if product has quantity information
-        if product.quantity_available is None:
-            raise HTTPException(
-                status_code=400, 
-                detail={
-                    "error": True, 
-                    "message": "Product quantity information not available",
-                    "product_id": product_id
-                }
-            )
+#         # Check if product has quantity information
+#         if product.quantity_available is None:
+#             raise HTTPException(
+#                 status_code=400, 
+#                 detail={
+#                     "error": True, 
+#                     "message": "Product quantity information not available",
+#                     "product_id": product_id
+#                 }
+#             )
         
-        # Check if sufficient quantity is available
-        if product.quantity_available < quantity:
-            raise HTTPException(
-                status_code=400, 
-                detail={
-                    "error": True, 
-                    "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
-                    "product_id": product_id,
-                    "requested_quantity": quantity,
-                    "available_quantity": product.quantity_available
-                }
-            )
+#         # Check if sufficient quantity is available
+#         if product.quantity_available < quantity:
+#             raise HTTPException(
+#                 status_code=400, 
+#                 detail={
+#                     "error": True, 
+#                     "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
+#                     "product_id": product_id,
+#                     "requested_quantity": quantity,
+#                     "available_quantity": product.quantity_available
+#                 }
+#             )
         
-        # Return product details if available
-        return {
-            "error": False,
-            "message": "Product available",
-            "data": {
-                "product": {
-                    "id": str(product.id),
-                    "name": product.name,
-                    "semicon_part_number": product.semicon_part_number,
-                    "manufacturer_part_number": product.manufacturerPartNumber,
-                    "manufacturer_name": product.manufacturer_name,
-                    "quantity_available": product.quantity_available,
-                    "unit_price": product.UnitPrice,
-                    "currency": product.currency,
-                    "description": product.description,
-                    "image_url": product.image_url,
-                    "datasheet_url": product.datasheet_url,
-                    "vendor_details": product.vendor_details,
-                    "status": product.status
-                },
-                "requested_quantity": quantity,
-                "availability_status": "available"
-            }
-        }
+#         # Return product details if available
+#         return {
+#             "error": False,
+#             "message": "Product available",
+#             "data": {
+#                 "product": {
+#                     "id": str(product.id),
+#                     "name": product.name,
+#                     "semicon_part_number": product.semicon_part_number,
+#                     "manufacturer_part_number": product.manufacturerPartNumber,
+#                     "manufacturer_name": product.manufacturer_name,
+#                     "quantity_available": product.quantity_available,
+#                     "unit_price": product.UnitPrice,
+#                     "currency": product.currency,
+#                     "description": product.description,
+#                     "image_url": product.image_url,
+#                     "datasheet_url": product.datasheet_url,
+#                     "vendor_details": product.vendor_details,
+#                     "status": product.status
+#                 },
+#                 "requested_quantity": quantity,
+#                 "availability_status": "available"
+#             }
+#         }
         
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail={
-                "error": True, 
-                "message": f"Error checking product availability: {str(e)}",
-                "product_id": product_id
-            }
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500, 
+#             detail={
+#                 "error": True, 
+#                 "message": f"Error checking product availability: {str(e)}",
+#                 "product_id": product_id
+#             }
 
-        )
+#         )
 @router.get("/analytics/count/totalproducts")
 async def get_total_products():
     try:
@@ -500,7 +500,7 @@ async def safe_fetch_details(part_number: str, client: httpx.AsyncClient):
     except Exception as e:
         print(f"[WARN] Failed to fetch details for {part_number}: {repr(e)}")
         return {"semicon_part_number": part_number, "error": str(e)}
-@router.get("/search/{query}")
+@router.get("/search/{query:path}")
 async def search_and_get_details(query: str):
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=5.0)) as client:

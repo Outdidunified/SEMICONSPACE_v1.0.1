@@ -5,7 +5,7 @@ from typing import Optional
 from app.database import engine, client
 from app.models.manufacturers_models import SemiconManufacturer
 from app.models.semicon_products import SemiconProduct
-from app.models.semicon_products import SemiconProduct as SemiconProducts
+from app.models.semicon_products_details import SemiconProduct as SemiconProducts
 from app.schemas.manufacturers_schema import (
     SemiconManufacturerCreateSchema,
     SemiconManufacturerUpdateSchema,
@@ -256,3 +256,93 @@ async def get_manufacturers_with_products():
         "data": [m.model_dump() for m in manufacturers]
     }
 #@router.get("/by-manufacturer/{manufacturer_id}", tags=["Products"])
+
+@router.get("/manufacturer2/{manufacturer_id}/products", tags=["Products by Manufacturer"])
+async def get_products_by_manufacturer2(
+    manufacturer_id: str,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return")
+):
+    """
+    Get all products for a specific manufacturer
+    
+    Args:
+        manufacturer_id: The manufacturer ID from semicon_products_details collection
+        skip: Number of records to skip for pagination
+        limit: Maximum number of records to return
+    
+    Returns:
+        List of products associated with the manufacturer
+    """
+    try:
+        # Clean and validate manufacturer_id
+        manufacturer_id = str(manufacturer_id).strip()
+        if not manufacturer_id:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": True, "message": "Manufacturer ID cannot be empty or just whitespace"}
+            )
+        
+        # Check if manufacturer exists
+        manufacturer_doc = await engine.find_one(
+            SemiconManufacturer,
+            SemiconManufacturer.semicon_manufacturer_id == str(manufacturer_id)
+        )
+        if not manufacturer_doc:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": True, "message": f"Manufacturer with ID '{manufacturer_id}' not found in manufacturer table"}
+            )
+        
+        # Get all products for this manufacturer
+        products = await engine.find(
+            SemiconProducts,
+            SemiconProducts.Manufacturer.semicon_manufacturer_id == str(manufacturer_id),
+            limit=limit,
+            skip=skip
+        )
+        
+        # Build mapping from semicon_products to get manufacturerPartNumber and enrich
+        semicon_parts = [p.semicon_part_number for p in products if getattr(p, "semicon_part_number", None)]
+        mpn_map = {}
+        if semicon_parts:
+            sp_collection = engine.get_collection(SemiconProductModel)
+            sp_docs = await sp_collection.find({"semicon_part_number": {"$in": semicon_parts}}).to_list(length=None)
+            mpn_map = {doc.get("semicon_part_number"): doc.get("manufacturerPartNumber") for doc in sp_docs}
+        
+        # Transform products to response format, adding manufacturerPartNumber when available
+        response_data = []
+        for product in products:
+            item = jsonable_encoder(product)
+            semipn = getattr(product, "semicon_part_number", None)
+            item["manufacturerPartNumber"] = mpn_map.get(semipn)
+            response_data.append(item)
+        
+        # Get total count for pagination
+        total_count = await engine.count(
+            SemiconProducts,
+            SemiconProducts.Manufacturer.semicon_manufacturer_id == str(manufacturer_id)
+        )
+        
+        logger.info(f"Retrieved {len(response_data)} products for manufacturer '{manufacturer_id}'")
+        
+        return {
+            "error": False,
+            "message": f"Successfully retrieved {len(response_data)} products for manufacturer '{manufacturer_id}'",
+            "data": jsonable_encoder(response_data),
+            "pagination": {
+                "total": total_count,
+                "skip": skip,
+                "limit": limit
+            }
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (400, 404, etc.)
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving products for manufacturer '{manufacturer_id}': {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": True, "message": f"Internal server error while retrieving products"}
+        )
