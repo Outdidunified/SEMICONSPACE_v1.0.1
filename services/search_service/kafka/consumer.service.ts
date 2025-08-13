@@ -58,7 +58,8 @@ export class KafkaConsumerService implements OnModuleInit {
           !payload.category ||
           !payload.manufacturer ||
           !payload.subcategory ||
-          !payload.semicon_part_number
+          !payload.semicon_part_number||
+          !payload.manufacturer_part_number
         ) {
           this.logger.warn('⚠️ Missing required product fields including semicon_part_number. Skipping.');
           return;
