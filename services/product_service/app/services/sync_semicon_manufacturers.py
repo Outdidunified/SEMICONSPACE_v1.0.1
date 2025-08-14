@@ -25,7 +25,7 @@ async def get_next_semicon_manufacturer_counter() -> int:
 
 async def fetch_and_sync_semicon_manufacturers() -> dict:
     print("🔄 Fetching and syncing manufacturers from DigiKey.. ")
-    url = "http://172.232.110.10:8000/api/digikey/manufacturers"
+    url = "http://172.232.102.237:8000/api/digikey/manufacturers"
     timeout = httpx.Timeout(350)
     created_by = "admin"
     modified_by = "admin"

@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 8009;
 
 // Middleware
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://172.232.110.10:8000',
+    origin: process.env.CORS_ORIGIN || 'http://172.232.102.237:8000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']

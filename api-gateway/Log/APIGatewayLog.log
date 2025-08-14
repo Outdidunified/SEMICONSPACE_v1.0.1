@@ -576,78 +576,78 @@
 07/08/2025 12:57:43 PM [DEBUG]: Matched service: /order
 07/08/2025 12:57:43 PM [DEBUG]: Route /order is protected, applying JWT verification
 07/08/2025 12:57:43 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 12:57:43 PM [DEBUG]: Proxying GET /api/order/admin/manager to http://172.232.110.10:8006/order/admin/manager
-07/08/2025 12:57:44 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8006/order/admin/manager] (Client: 192.168.1.35) | Status: 200
+07/08/2025 12:57:43 PM [DEBUG]: Proxying GET /api/order/admin/manager to http://172.232.102.237:8006/order/admin/manager
+07/08/2025 12:57:44 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8006/order/admin/manager] (Client: 192.168.1.35) | Status: 200
 07/08/2025 12:57:55 PM [INFO]: POST /api/auth/Admin_login
 07/08/2025 12:57:55 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 12:57:55 PM [DEBUG]: Matched service: /auth
 07/08/2025 12:57:55 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 12:57:55 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 12:57:55 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.35) | Status: 200
+07/08/2025 12:57:55 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 12:57:55 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.35) | Status: 200
 07/08/2025 12:58:03 PM [INFO]: GET /api/user/roles
 07/08/2025 12:58:03 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 12:58:03 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:03 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:03 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 12:58:03 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
-07/08/2025 12:58:03 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/roles] (Client: 192.168.1.35) | Status: 200
+07/08/2025 12:58:03 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
+07/08/2025 12:58:03 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/roles] (Client: 192.168.1.35) | Status: 200
 07/08/2025 12:58:03 PM [INFO]: GET /api/user/roles
 07/08/2025 12:58:03 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 12:58:03 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:03 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:03 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 12:58:03 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 12:58:03 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 12:58:05 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 12:58:05 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 12:58:05 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:05 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:05 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 12:58:05 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
-07/08/2025 12:58:05 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/manage_users/getall] (Client: 192.168.1.35) | Status: 200
+07/08/2025 12:58:05 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
+07/08/2025 12:58:05 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/manage_users/getall] (Client: 192.168.1.35) | Status: 200
 07/08/2025 12:58:05 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 12:58:05 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 12:58:05 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:05 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:05 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 12:58:05 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 12:58:05 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 12:58:34 PM [INFO]: POST /api/auth/Admin_login
 07/08/2025 12:58:34 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 12:58:34 PM [DEBUG]: Matched service: /auth
 07/08/2025 12:58:34 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 12:58:34 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 12:58:34 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.27) | Status: 200
+07/08/2025 12:58:34 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 12:58:34 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.27) | Status: 200
 07/08/2025 12:58:41 PM [INFO]: GET /api/user/roles
 07/08/2025 12:58:41 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 12:58:41 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:41 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:41 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 12:58:41 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
-07/08/2025 12:58:41 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/roles] (Client: 192.168.1.27) | Status: 200
+07/08/2025 12:58:41 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
+07/08/2025 12:58:41 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/roles] (Client: 192.168.1.27) | Status: 200
 07/08/2025 12:58:41 PM [INFO]: GET /api/user/roles
 07/08/2025 12:58:41 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 12:58:41 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:41 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:41 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 12:58:41 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 12:58:41 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 12:58:42 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 12:58:42 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 12:58:42 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:42 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:42 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 12:58:42 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
-07/08/2025 12:58:42 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/manage_users/getall] (Client: 192.168.1.27) | Status: 200
+07/08/2025 12:58:42 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
+07/08/2025 12:58:42 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/manage_users/getall] (Client: 192.168.1.27) | Status: 200
 07/08/2025 12:58:42 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 12:58:42 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 12:58:42 PM [DEBUG]: Matched service: /user
 07/08/2025 12:58:42 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 12:58:42 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 12:58:42 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 12:58:42 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 12:59:05 PM [INFO]: POST /api/auth/Admin_login
 07/08/2025 12:59:05 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 12:59:05 PM [DEBUG]: Matched service: /auth
 07/08/2025 12:59:05 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 12:59:05 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 12:59:05 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
+07/08/2025 12:59:05 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 12:59:05 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
 07/08/2025 12:59:10 PM [INFO]: GET /api/user/roles
 07/08/2025 12:59:10 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 12:59:10 PM [DEBUG]: Matched service: /user
@@ -662,63 +662,63 @@
 07/08/2025 01:00:20 PM [DEBUG]: Processing path: /product/list
 07/08/2025 01:00:20 PM [DEBUG]: Matched service: /product
 07/08/2025 01:00:20 PM [DEBUG]: Route /product is not protected, skipping JWT verification
-07/08/2025 01:00:20 PM [DEBUG]: Proxying GET /api/product/list to http://172.232.110.10:8003/product/list
-07/08/2025 01:00:20 PM [WARN]: CLIENT ERROR - Response from [http://172.232.110.10:8003/product/list] (Client: 192.168.1.35) | Status: 404
+07/08/2025 01:00:20 PM [DEBUG]: Proxying GET /api/product/list to http://172.232.102.237:8003/product/list
+07/08/2025 01:00:20 PM [WARN]: CLIENT ERROR - Response from [http://172.232.102.237:8003/product/list] (Client: 192.168.1.35) | Status: 404
 07/08/2025 01:00:20 PM [INFO]: GET /api/product/list
 07/08/2025 01:00:20 PM [DEBUG]: Processing path: /product/list
 07/08/2025 01:00:20 PM [DEBUG]: Matched service: /product
 07/08/2025 01:00:20 PM [DEBUG]: Route /product is not protected, skipping JWT verification
-07/08/2025 01:00:20 PM [DEBUG]: Proxying GET /api/product/list to http://172.232.110.10:8003/product/list
-07/08/2025 01:00:20 PM [WARN]: CLIENT ERROR - Response from [http://172.232.110.10:8003/product/list] (Client: 192.168.1.35) | Status: 404
+07/08/2025 01:00:20 PM [DEBUG]: Proxying GET /api/product/list to http://172.232.102.237:8003/product/list
+07/08/2025 01:00:20 PM [WARN]: CLIENT ERROR - Response from [http://172.232.102.237:8003/product/list] (Client: 192.168.1.35) | Status: 404
 07/08/2025 01:00:23 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 01:00:23 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 01:00:23 PM [DEBUG]: Matched service: /user
 07/08/2025 01:00:23 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:00:23 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:00:23 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 01:00:23 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 01:00:23 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 01:00:23 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 01:00:23 PM [DEBUG]: Matched service: /user
 07/08/2025 01:00:23 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:00:23 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:00:23 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 01:00:23 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 01:00:25 PM [INFO]: GET /api/user/roles
 07/08/2025 01:00:25 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:00:25 PM [DEBUG]: Matched service: /user
 07/08/2025 01:00:25 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:00:25 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:00:25 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 01:00:25 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 01:00:25 PM [INFO]: GET /api/user/roles
 07/08/2025 01:00:25 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:00:25 PM [DEBUG]: Matched service: /user
 07/08/2025 01:00:25 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:00:25 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:00:25 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 01:00:25 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 01:01:45 PM [INFO]: GET /api/user/roles
 07/08/2025 01:01:45 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:01:45 PM [DEBUG]: Matched service: /user
 07/08/2025 01:01:45 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:01:45 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:01:45 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 01:01:45 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 01:03:19 PM [INFO]: GET /api/user/roles
 07/08/2025 01:03:19 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:03:19 PM [DEBUG]: Matched service: /user
 07/08/2025 01:03:19 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:03:19 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:03:19 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 01:03:19 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 01:03:21 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 01:03:21 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 01:03:21 PM [DEBUG]: Matched service: /user
 07/08/2025 01:03:21 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:03:21 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:03:21 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
-07/08/2025 01:03:21 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/manage_users/getall] (Client: 192.168.1.35) | Status: 200
+07/08/2025 01:03:21 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
+07/08/2025 01:03:21 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/manage_users/getall] (Client: 192.168.1.35) | Status: 200
 07/08/2025 01:03:21 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 01:03:21 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 01:03:21 PM [DEBUG]: Matched service: /user
 07/08/2025 01:03:21 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:03:21 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:03:21 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 01:03:21 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 01:17:00 PM [INFO]: 🛡️ API Gateway running on http://0.0.0.0:8000
 07/08/2025 01:17:00 PM [INFO]: Environment: development
 07/08/2025 01:17:44 PM [INFO]: GET /api/user/roles
@@ -740,8 +740,8 @@
 07/08/2025 01:17:54 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 01:17:54 PM [DEBUG]: Matched service: /auth
 07/08/2025 01:17:54 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 01:17:54 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 01:17:54 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.35) | Status: 200
+07/08/2025 01:17:54 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 01:17:54 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.35) | Status: 200
 07/08/2025 01:17:57 PM [INFO]: GET /api/user/roles
 07/08/2025 01:17:57 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:17:57 PM [DEBUG]: Matched service: /user
@@ -757,31 +757,31 @@
 07/08/2025 01:18:02 PM [DEBUG]: Matched service: /user
 07/08/2025 01:18:02 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:18:02 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:18:02 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 01:18:02 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 01:18:02 PM [INFO]: GET /api/user/roles
 07/08/2025 01:18:02 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:18:02 PM [DEBUG]: Matched service: /user
 07/08/2025 01:18:02 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:18:02 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:18:02 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 01:18:02 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 01:18:04 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 01:18:04 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 01:18:04 PM [DEBUG]: Matched service: /user
 07/08/2025 01:18:04 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:18:04 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:18:04 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 01:18:04 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 01:18:04 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 01:18:04 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 01:18:04 PM [DEBUG]: Matched service: /user
 07/08/2025 01:18:04 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 01:18:04 PM [INFO]: Authentication successful for user: semiconorrman1@gmail.com (Session: N/A)
-07/08/2025 01:18:04 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 01:18:04 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 01:18:06 PM [INFO]: POST /api/auth/Admin_login
 07/08/2025 01:18:06 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 01:18:06 PM [DEBUG]: Matched service: /auth
 07/08/2025 01:18:06 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 01:18:06 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 01:18:06 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
+07/08/2025 01:18:06 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 01:18:06 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
 07/08/2025 01:18:11 PM [INFO]: GET /api/user/roles
 07/08/2025 01:18:11 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 01:18:11 PM [DEBUG]: Matched service: /user
@@ -796,95 +796,95 @@
 07/08/2025 01:19:06 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 01:19:06 PM [DEBUG]: Matched service: /auth
 07/08/2025 01:19:06 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 01:19:06 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 01:19:06 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
+07/08/2025 01:19:06 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 01:19:06 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
 07/08/2025 01:30:41 PM [INFO]: POST /api/auth/Admin_login
 07/08/2025 01:30:41 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 01:30:41 PM [DEBUG]: Matched service: /auth
 07/08/2025 01:30:41 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 01:30:41 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 01:30:41 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
+07/08/2025 01:30:41 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 01:30:41 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
 07/08/2025 02:21:31 PM [INFO]: POST /api/auth/login
 07/08/2025 02:21:31 PM [DEBUG]: Processing path: /auth/login
 07/08/2025 02:21:31 PM [DEBUG]: Matched service: /auth
 07/08/2025 02:21:31 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 02:21:31 PM [DEBUG]: Proxying POST /api/auth/login to http://172.232.110.10:8001/auth/login
-07/08/2025 02:21:31 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/login] (Client: 192.168.1.23) | Status: 200
+07/08/2025 02:21:31 PM [DEBUG]: Proxying POST /api/auth/login to http://172.232.102.237:8001/auth/login
+07/08/2025 02:21:31 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/login] (Client: 192.168.1.23) | Status: 200
 07/08/2025 02:23:02 PM [INFO]: GET /api/order/admin/manager
 07/08/2025 02:23:02 PM [DEBUG]: Processing path: /order/admin/manager
 07/08/2025 02:23:02 PM [DEBUG]: Matched service: /order
 07/08/2025 02:23:02 PM [DEBUG]: Route /order is protected, applying JWT verification
 07/08/2025 02:23:02 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:02 PM [DEBUG]: Proxying GET /api/order/admin/manager to http://172.232.110.10:8006/order/admin/manager
-07/08/2025 02:23:02 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8006/order/admin/manager] (Client: 192.168.1.52) | Status: 200
+07/08/2025 02:23:02 PM [DEBUG]: Proxying GET /api/order/admin/manager to http://172.232.102.237:8006/order/admin/manager
+07/08/2025 02:23:02 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8006/order/admin/manager] (Client: 192.168.1.52) | Status: 200
 07/08/2025 02:23:12 PM [INFO]: GET /api/user/roles
 07/08/2025 02:23:12 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:23:12 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:12 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:12 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:12 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
-07/08/2025 02:23:12 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/roles] (Client: 192.168.1.52) | Status: 200
+07/08/2025 02:23:12 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
+07/08/2025 02:23:12 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/roles] (Client: 192.168.1.52) | Status: 200
 07/08/2025 02:23:12 PM [INFO]: GET /api/user/roles
 07/08/2025 02:23:12 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:23:12 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:12 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:12 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:12 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:23:12 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:23:13 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:23:13 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:23:13 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:13 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:13 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:13 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
-07/08/2025 02:23:13 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/manage_users/getall] (Client: 192.168.1.52) | Status: 200
+07/08/2025 02:23:13 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
+07/08/2025 02:23:13 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/manage_users/getall] (Client: 192.168.1.52) | Status: 200
 07/08/2025 02:23:13 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:23:13 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:23:13 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:13 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:13 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:13 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:23:13 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:23:17 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:23:17 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:23:17 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:17 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:17 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:17 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:23:17 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:23:18 PM [INFO]: GET /api/user/roles
 07/08/2025 02:23:18 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:23:18 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:18 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:18 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:18 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:23:18 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:23:18 PM [INFO]: GET /api/user/roles
 07/08/2025 02:23:18 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:23:18 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:18 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:18 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:18 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:23:18 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:23:19 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:23:19 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:23:19 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:19 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:19 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:19 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:23:19 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:23:19 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:23:19 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:23:19 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:19 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:19 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:19 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:23:19 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:23:21 PM [INFO]: GET /api/user/roles
 07/08/2025 02:23:21 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:23:21 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:21 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:21 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:21 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:23:21 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:23:21 PM [INFO]: GET /api/user/roles
 07/08/2025 02:23:21 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:23:21 PM [DEBUG]: Matched service: /user
 07/08/2025 02:23:21 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:23:21 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:23:21 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:23:21 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:23:25 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:23:25 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:23:25 PM [DEBUG]: Matched service: /user
@@ -899,26 +899,26 @@
 07/08/2025 02:23:50 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 02:23:50 PM [DEBUG]: Matched service: /auth
 07/08/2025 02:23:50 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 02:23:50 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 02:23:50 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.27) | Status: 200
+07/08/2025 02:23:50 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 02:23:50 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.27) | Status: 200
 07/08/2025 02:23:57 PM [INFO]: POST /api/auth/login
 07/08/2025 02:23:57 PM [DEBUG]: Processing path: /auth/login
 07/08/2025 02:23:57 PM [DEBUG]: Matched service: /auth
 07/08/2025 02:23:57 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 02:23:57 PM [DEBUG]: Proxying POST /api/auth/login to http://172.232.110.10:8001/auth/login
-07/08/2025 02:23:57 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/login] (Client: 192.168.1.23) | Status: 200
+07/08/2025 02:23:57 PM [DEBUG]: Proxying POST /api/auth/login to http://172.232.102.237:8001/auth/login
+07/08/2025 02:23:57 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/login] (Client: 192.168.1.23) | Status: 200
 07/08/2025 02:24:19 PM [INFO]: GET /api/user/roles
 07/08/2025 02:24:19 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:24:19 PM [DEBUG]: Matched service: /user
 07/08/2025 02:24:19 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:24:19 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:24:19 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:24:19 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:24:20 PM [INFO]: GET /api/user/roles
 07/08/2025 02:24:20 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:24:20 PM [DEBUG]: Matched service: /user
 07/08/2025 02:24:20 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:24:20 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:24:20 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:24:20 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:24:29 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:24:29 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:24:29 PM [DEBUG]: Matched service: /user
@@ -933,85 +933,85 @@
 07/08/2025 02:25:15 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 02:25:15 PM [DEBUG]: Matched service: /auth
 07/08/2025 02:25:15 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 02:25:15 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 02:25:16 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.23) | Status: 200
+07/08/2025 02:25:15 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 02:25:16 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.23) | Status: 200
 07/08/2025 02:25:44 PM [INFO]: POST /api/user/profile/get
 07/08/2025 02:25:44 PM [DEBUG]: Processing path: /user/profile/get
 07/08/2025 02:25:44 PM [DEBUG]: Matched service: /user
 07/08/2025 02:25:44 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:25:44 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:25:44 PM [DEBUG]: Proxying POST /api/user/profile/get to http://172.232.110.10:8002/user/profile/get
-07/08/2025 02:25:44 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/profile/get] (Client: 192.168.1.23) | Status: 201
+07/08/2025 02:25:44 PM [DEBUG]: Proxying POST /api/user/profile/get to http://172.232.102.237:8002/user/profile/get
+07/08/2025 02:25:44 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/profile/get] (Client: 192.168.1.23) | Status: 201
 07/08/2025 02:26:01 PM [INFO]: GET /api/user/roles
 07/08/2025 02:26:01 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:26:01 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:01 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:01 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:01 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:26:01 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:26:01 PM [INFO]: GET /api/user/roles
 07/08/2025 02:26:01 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:26:01 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:01 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:01 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:01 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:26:01 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:26:02 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:26:02 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:26:02 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:02 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:02 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:02 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:26:02 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:26:26 PM [INFO]: GET /api/user/roles
 07/08/2025 02:26:26 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:26:26 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:26 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:26 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:26 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:26:26 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:26:40 PM [INFO]: POST /api/auth/Admin_login
 07/08/2025 02:26:40 PM [DEBUG]: Processing path: /auth/Admin_login
 07/08/2025 02:26:40 PM [DEBUG]: Matched service: /auth
 07/08/2025 02:26:40 PM [DEBUG]: Route /auth is not protected, skipping JWT verification
-07/08/2025 02:26:40 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.110.10:8001/auth/Admin_login
-07/08/2025 02:26:40 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
+07/08/2025 02:26:40 PM [DEBUG]: Proxying POST /api/auth/Admin_login to http://172.232.102.237:8001/auth/Admin_login
+07/08/2025 02:26:40 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8001/auth/Admin_login] (Client: 192.168.1.52) | Status: 200
 07/08/2025 02:26:45 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:26:45 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:26:45 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:45 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:45 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:45 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:26:45 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:26:45 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:26:45 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:26:45 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:45 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:45 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:45 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:26:45 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:26:55 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:26:55 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:26:55 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:55 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:55 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:55 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
-07/08/2025 02:26:55 PM [SUCCESS]: SUCCESS - Response from [http://172.232.110.10:8002/user/manage_users/getall] (Client: 192.168.1.27) | Status: 200
+07/08/2025 02:26:55 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
+07/08/2025 02:26:55 PM [SUCCESS]: SUCCESS - Response from [http://172.232.102.237:8002/user/manage_users/getall] (Client: 192.168.1.27) | Status: 200
 07/08/2025 02:26:55 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:26:55 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:26:55 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:55 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:55 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:55 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:26:55 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:26:59 PM [INFO]: GET /api/user/manage_users/getall
 07/08/2025 02:26:59 PM [DEBUG]: Processing path: /user/manage_users/getall
 07/08/2025 02:26:59 PM [DEBUG]: Matched service: /user
 07/08/2025 02:26:59 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:26:59 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:26:59 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.110.10:8002/user/manage_users/getall
+07/08/2025 02:26:59 PM [DEBUG]: Proxying GET /api/user/manage_users/getall to http://172.232.102.237:8002/user/manage_users/getall
 07/08/2025 02:27:06 PM [INFO]: GET /api/user/roles
 07/08/2025 02:27:06 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:27:06 PM [DEBUG]: Matched service: /user
 07/08/2025 02:27:06 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:27:06 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:27:06 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:27:06 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles
 07/08/2025 02:27:06 PM [INFO]: GET /api/user/roles
 07/08/2025 02:27:06 PM [DEBUG]: Processing path: /user/roles
 07/08/2025 02:27:06 PM [DEBUG]: Matched service: /user
 07/08/2025 02:27:06 PM [DEBUG]: Route /user is protected, applying JWT verification
 07/08/2025 02:27:06 PM [INFO]: Authentication successful for user: admin@gmail.com (Session: N/A)
-07/08/2025 02:27:06 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.110.10:8002/user/roles
+07/08/2025 02:27:06 PM [DEBUG]: Proxying GET /api/user/roles to http://172.232.102.237:8002/user/roles

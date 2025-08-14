@@ -20,7 +20,7 @@ import asyncio
 from datetime import datetime
 router = APIRouter(prefix="/product")
 
-DIGIKEY_BASE_URL = "http://172.232.110.10:8000/api/digikey"  # change to your DigiKey proxy URL
+DIGIKEY_BASE_URL = "http://172.232.102.237:8000/api/digikey"  # change to your DigiKey proxy URL
 
 # ======= EXISTING ENDPOINTS =======@router.post("/sync/digikey")
 @router.post("/sync/digikey")
@@ -431,7 +431,7 @@ async def search_and_get_details(query: str):
                 }
 
             # 3. DigiKey sync
-            digi_url = "http://172.232.110.10:8003/product/sync/digikey"
+            digi_url = "http://172.232.102.237:8003/product/sync/digikey"
             digi_products = []
 
             digi_resp = await client.post(digi_url, json={"query": query})

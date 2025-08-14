@@ -27,7 +27,7 @@ export class OrderService {
     if (!Array.isArray(items) || items.length === 0) throw new Error('Items list is required');
 
     // Validate cart
-    const cartUrl = `http://172.232.110.10:8005/cart/getallcartitems/${userId}`;
+    const cartUrl = `http://172.232.102.237:8005/cart/getallcartitems/${userId}`;
     let cartRes;
     try {
       cartRes = await axios.get(cartUrl);
@@ -73,7 +73,7 @@ export class OrderService {
     });
 
     // Create Razorpay order via payment service
-    const paymentServiceUrl = `http://172.232.110.10:8007/payment/initiate`;
+    const paymentServiceUrl = `http://172.232.102.237:8007/payment/initiate`;
     let paymentRes;
     try {
       paymentRes = await axios.post(paymentServiceUrl, {

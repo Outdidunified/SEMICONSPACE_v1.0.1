@@ -91,7 +91,7 @@ def build_category(data: dict, scid_number: int) -> SemiconCategory:
 
 # 🚀 Main sync function
 async def fetch_and_sync_semicon_categories():
-    url = "http://172.232.110.10:8000/api/digikey/categories"
+    url = "http://172.232.102.237:8000/api/digikey/categories"
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:

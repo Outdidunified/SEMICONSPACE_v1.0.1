@@ -41,7 +41,7 @@ export class CartService {
       console.log("💲 Price from user request:", userPrice);
       console.log("📦 Package Type from user request:", packageType);
 
-      const externalUrl = `http://172.232.110.10:8003/product/quantity-price/check/${productId}/${quantity}`;
+      const externalUrl = `http://172.232.102.237:8003/product/quantity-price/check/${productId}/${quantity}`;
       console.log("➡️ Fetching product from:", externalUrl);
 
       const response = await firstValueFrom(this.httpService.get(externalUrl));
