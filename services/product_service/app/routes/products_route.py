@@ -755,25 +755,29 @@ async def get_semicon_products(
     if child_category_id:
         expr &= (SemiconProduct.semicon_child_category_id == child_category_id)
 
-    # Fetch products sorted by created_date DESC
+    # Count total matching products (before limiting)
+    total_count = await engine.count(SemiconProduct, expr)
+
+    # Fetch products sorted by created_date DESC (limit 100)
     products = await engine.find(
         SemiconProduct,
         expr,
-        sort=SemiconProduct.created_date.desc(),
-        limit=100
+        sort=SemiconProduct.created_date.desc()
     )
 
     if not products:
-        return {"status": "success", "data": []}
+        return {"status": "success", "count": 0, "data": []}
 
     # Get unique category IDs
     category_ids = list({p.semicon_category_id for p in products})
     child_category_ids = list({p.semicon_child_category_id for p in products if p.semicon_child_category_id})
 
-    # Fetch category & child category names
-    categories = await engine.find(SemiconCategory, SemiconCategory.semicon_category_id.in_(category_ids))
+    # Fetch category names
+    categories = await engine.find(
+        SemiconCategory, 
+        SemiconCategory.semicon_category_id.in_(category_ids)
+    )
     category_map = {c.semicon_category_id: c.digikey_name for c in categories}
-
 
     # Merge names into product data
     result = []
@@ -781,10 +785,12 @@ async def get_semicon_products(
         result.append({
             **p.dict(),
             "category_name": category_map.get(p.semicon_category_id),
-            #"child_category_name": child_category_map.get(p.semicon_child_category_id)
+            # "child_category_name": child_category_map.get(p.semicon_child_category_id)
         })
 
-    return {"status": "success", "data": result}
+    return {"status": "success", "Total_product_count": total_count, "data": result}
+
+    
 @router.get("/fetch/new-arrivals")
 async def get_semicon_products(
     category_id: Optional[str] = Query(None),
@@ -792,12 +798,17 @@ async def get_semicon_products(
 ):
     # Build query expression
     expr = QueryExpression()
+
+    # Only fetch products that have a non-empty image_url
+    expr &= SemiconProduct.image_url != None
+    expr &= SemiconProduct.image_url != ""
+
     if category_id:
         expr &= (SemiconProduct.semicon_category_id == category_id)
     if child_category_id:
         expr &= (SemiconProduct.semicon_child_category_id == child_category_id)
 
-    # Fetch products sorted by created_date DESC
+    # Fetch products sorted by created_date DESC, only 8 with images
     products = await engine.find(
         SemiconProduct,
         expr,
@@ -812,10 +823,9 @@ async def get_semicon_products(
     category_ids = list({p.semicon_category_id for p in products})
     child_category_ids = list({p.semicon_child_category_id for p in products if p.semicon_child_category_id})
 
-    # Fetch category & child category names
+    # Fetch category names
     categories = await engine.find(SemiconCategory, SemiconCategory.semicon_category_id.in_(category_ids))
     category_map = {c.semicon_category_id: c.digikey_name for c in categories}
-
 
     # Merge names into product data
     result = []
@@ -823,7 +833,8 @@ async def get_semicon_products(
         result.append({
             **p.dict(),
             "category_name": category_map.get(p.semicon_category_id),
-            #"child_category_name": child_category_map.get(p.semicon_child_category_id)
+            # "child_category_name": child_category_map.get(p.semicon_child_category_id)
         })
 
     return {"status": "success", "data": result}
+
