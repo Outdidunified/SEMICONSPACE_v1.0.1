@@ -49,6 +49,7 @@ def transform_category_doc(doc):
             "modified_by": child.get("modified_by"),
             "modified_date": child.get("modified_date"),
             "status": child.get("status", True),
+            #"image_url": child.get("image_url"),
             "child_categories": [transform_child_category(grandchild) for grandchild in child.get("child_categories", [])]
         }
     return {
@@ -64,6 +65,7 @@ def transform_category_doc(doc):
         "modified_by": doc.get("modified_by"),
         "modified_date": doc.get("modified_date"),
         "status": doc.get("status", True),
+        "image_url": doc.get("image_url"),
         "child_categories": [transform_child_category(child) for child in doc.get("child_categories", [])]
     }
 @router.get("/categories/all", tags=["Semicon Categories"])
