@@ -9,6 +9,7 @@ from app.services.sync_semicon_products import fetch_and_sync_semicon_product
 from app.database import engine
 from app.models.semicon_products import SemiconProduct
 from app.models.semicon_products_details import SemiconProduct as SemiconProductDetails
+from app.models.categories_models import SemiconCategory, SemiconChildCategory
 from odmantic.query import QueryExpression
 from uuid import UUID
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -360,119 +361,6 @@ async def get_product_by_id(product_id: str):
         print(f"Error fetching product {product_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
 
-
-# @router.get("/count/total")
-# async def get_total_products():
-#     try:
-#         count = await engine.count(SemiconProduct)
-#         return {"total_products": count}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Error counting products: {str(e)}")
-
-
-# @router.get("/quantity/check/{product_id}/{quantity}")
-# async def check_product_availability(product_id: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
-#     """
-#     Check if a product exists and has sufficient quantity available.
-    
-#     Args:
-#         product_id: The product ID (UUID) or semicon_part_number
-#         quantity: The requested quantity to check
-        
-#     Returns:
-#         Product details if available, or error message if not found/insufficient quantity
-#     """
-#     try:
-#         # Validate quantity
-#         if quantity <= 0:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={"error": True, "message": "Quantity must be greater than 0"}
-#             )
-        
-#         # Find product by ID or semicon_part_number
-#         product = None
-        
-#         # Try as UUID first
-#         try:
-#             product_uuid = UUID(product_id)
-#             product = await engine.find_one(SemiconProduct, SemiconProduct.id == product_uuid)
-#         except ValueError:
-#             # If not UUID, try as semicon_part_number
-#             product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == product_id)
-        
-#         # Check if product exists
-#         if not product:
-#             raise HTTPException(
-#                 status_code=404, 
-#                 detail={
-#                     "error": True, 
-#                     "message": "Product not found",
-#                     "product_id": product_id
-#                 }
-#             )
-        
-#         # Check if product has quantity information
-#         if product.quantity_available is None:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={
-#                     "error": True, 
-#                     "message": "Product quantity information not available",
-#                     "product_id": product_id
-#                 }
-#             )
-        
-#         # Check if sufficient quantity is available
-#         if product.quantity_available < quantity:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={
-#                     "error": True, 
-#                     "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
-#                     "product_id": product_id,
-#                     "requested_quantity": quantity,
-#                     "available_quantity": product.quantity_available
-#                 }
-#             )
-        
-#         # Return product details if available
-#         return {
-#             "error": False,
-#             "message": "Product available",
-#             "data": {
-#                 "product": {
-#                     "id": str(product.id),
-#                     "name": product.name,
-#                     "semicon_part_number": product.semicon_part_number,
-#                     "manufacturer_part_number": product.manufacturerPartNumber,
-#                     "manufacturer_name": product.manufacturer_name,
-#                     "quantity_available": product.quantity_available,
-#                     "unit_price": product.UnitPrice,
-#                     "currency": product.currency,
-#                     "description": product.description,
-#                     "image_url": product.image_url,
-#                     "datasheet_url": product.datasheet_url,
-#                     "vendor_details": product.vendor_details,
-#                     "status": product.status
-#                 },
-#                 "requested_quantity": quantity,
-#                 "availability_status": "available"
-#             }
-#         }
-        
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500, 
-#             detail={
-#                 "error": True, 
-#                 "message": f"Error checking product availability: {str(e)}",
-#                 "product_id": product_id
-#             }
-
-#         )
 @router.get("/analytics/count/totalproducts")
 async def get_total_products():
     try:
@@ -691,146 +579,7 @@ async def get_all_counts():
         "total_active_child_categories": total_active_child_category,
         "total_products": total_product_count
      }
-# @router.get("/quantity-price/check/{semicon_part_number}/{quantity}")
-# async def check_product_availability(semicon_part_number: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
-#     """
-#     Check if a product exists, has sufficient quantity available, and calculate the total price using semicon_part_number (excluding Digi-Reel®).
-    
-#     Args:
-#         semicon_part_number: The semicon part number of the product
-#         quantity: The requested quantity to check availability for
-        
-#     Returns:
-#         Product details with pricing if available, or error message if not found/insufficient quantity
-#     """
-#     try:
-#         # Validate quantity
-#         if quantity <= 0:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={"error": True, "message": "Quantity must be greater than 0"}
-#             )
-        
-#         # Find product by semicon_part_number
-#         product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == semicon_part_number)
-        
-#         # Check if product exists
-#         if not product:
-#             raise HTTPException(
-#                 status_code=404, 
-#                 detail={
-#                     "error": True, 
-#                     "message": "Product not found",
-#                     "semicon_part_number": semicon_part_number
-#                 }
-#             )
-        
-#         # Check if product has quantity information
-#         if product.quantity_available is None:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={
-#                     "error": True, 
-#                     "message": "Product quantity information not available",
-#                     "semicon_part_number": semicon_part_number
-#                 }
-#             )
-        
-#         # Check if sufficient quantity is available
-#         if product.quantity_available < quantity:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={
-#                     "error": True, 
-#                     "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
-#                     "semicon_part_number": semicon_part_number,
-#                     "requested_quantity": quantity,
-#                     "available_quantity": product.quantity_available
-#                 }
-#             )
-        
-#         # Fetch product details to get variants and pricing
-#         product_details = await get_product_by_id(semicon_part_number)
-#         variants = product_details["data"]["detailed_info"]["ProductVariants"]
-        
-#         # Filter out Digi-Reel® and select the first available package type (default to Cut Tape)
-#         allowed_package_types = ["Cut Tape (CT)", "Tape & Reel (TR)"]
-#         matching_variant = next((v for v in variants if v["package_type"] in allowed_package_types), None)
-        
-#         if not matching_variant:
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={
-#                     "error": True, 
-#                     "message": "No pricing available for Cut Tape or Tape & Reel",
-#                     "semicon_part_number": semicon_part_number
-#                 }
-#             )
-        
-#         # Extract pricing details
-#         pricing_details = matching_variant.get("pricing_details", {})
-#         if not pricing_details or not pricing_details.get("pricing"):
-#             raise HTTPException(
-#                 status_code=400, 
-#                 detail={
-#                     "error": True, 
-#                     "message": "Pricing details not available",
-#                     "semicon_part_number": semicon_part_number
-#                 }
-#             )
-        
-#         # Find the appropriate pricing tier
-#         pricing_tiers = sorted(pricing_details["pricing"], key=lambda x: x["BreakQuantity"])
-#         unit_price = None
-#         for tier in pricing_tiers:
-#             if quantity >= tier["BreakQuantity"]:
-#                 unit_price = tier["UnitPrice"]
-#             else:
-#                 break
-#         if not unit_price:
-#             unit_price = pricing_tiers[0]["UnitPrice"]  # Default to the lowest tier if quantity is less than minimum
-        
-#         # Calculate total price
-#         total_price = unit_price * quantity
-        
-#         # Return product details with pricing
-#         return {
-#             "error": False,
-#             "message": "Product available",
-#             "data": {
-#                 "product": {
-#                     "id": str(product.id),
-#                     "name": product.name,
-#                     "semicon_part_number": product.semicon_part_number,
-#                     "manufacturer_part_number": product.manufacturerPartNumber,
-#                     "manufacturer_name": product.manufacturer_name,
-#                     "quantity_available": product.quantity_available,
-#                     "unit_price": unit_price,
-#                     "currency": "INR",
-#                     "description": product.description,
-#                     "image_url": product.image_url,
-#                     "datasheet_url": product.datasheet_url,
-#                     "vendor_details": product.vendor_details,
-#                     "status": product.status
-#                 },
-#                 "requested_quantity": quantity,
-#                 "package_type": matching_variant["package_type"],
-#                 "total_price": total_price,
-#                 "availability_status": "available"
-#             }
-#         }
-        
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500, 
-#             detail={
-#                 "error": True, 
-#                 "message": f"Error checking product availability: {str(e)}",
-#                 "semicon_part_number": semicon_part_number
-#             }
-#         )
+
 @router.get("/quantity-price/check/{semicon_part_number:path}/{quantity}")
 async def check_product_availability(semicon_part_number: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
     """
@@ -993,3 +742,88 @@ async def check_product_availability(semicon_part_number: str, quantity: int = P
                 "semicon_part_number": semicon_part_number
             }
         )
+
+@router.get("/fetch/all-products")
+async def get_semicon_products(
+    category_id: Optional[str] = Query(None),
+    child_category_id: Optional[str] = Query(None)
+):
+    # Build query expression
+    expr = QueryExpression()
+    if category_id:
+        expr &= (SemiconProduct.semicon_category_id == category_id)
+    if child_category_id:
+        expr &= (SemiconProduct.semicon_child_category_id == child_category_id)
+
+    # Fetch products sorted by created_date DESC
+    products = await engine.find(
+        SemiconProduct,
+        expr,
+        sort=SemiconProduct.created_date.desc(),
+        limit=100
+    )
+
+    if not products:
+        return {"status": "success", "data": []}
+
+    # Get unique category IDs
+    category_ids = list({p.semicon_category_id for p in products})
+    child_category_ids = list({p.semicon_child_category_id for p in products if p.semicon_child_category_id})
+
+    # Fetch category & child category names
+    categories = await engine.find(SemiconCategory, SemiconCategory.semicon_category_id.in_(category_ids))
+    category_map = {c.semicon_category_id: c.digikey_name for c in categories}
+
+
+    # Merge names into product data
+    result = []
+    for p in products:
+        result.append({
+            **p.dict(),
+            "category_name": category_map.get(p.semicon_category_id),
+            #"child_category_name": child_category_map.get(p.semicon_child_category_id)
+        })
+
+    return {"status": "success", "data": result}
+@router.get("/fetch/new-arrivals")
+async def get_semicon_products(
+    category_id: Optional[str] = Query(None),
+    child_category_id: Optional[str] = Query(None)
+):
+    # Build query expression
+    expr = QueryExpression()
+    if category_id:
+        expr &= (SemiconProduct.semicon_category_id == category_id)
+    if child_category_id:
+        expr &= (SemiconProduct.semicon_child_category_id == child_category_id)
+
+    # Fetch products sorted by created_date DESC
+    products = await engine.find(
+        SemiconProduct,
+        expr,
+        sort=SemiconProduct.created_date.desc(),
+        limit=8
+    )
+
+    if not products:
+        return {"status": "success", "data": []}
+
+    # Get unique category IDs
+    category_ids = list({p.semicon_category_id for p in products})
+    child_category_ids = list({p.semicon_child_category_id for p in products if p.semicon_child_category_id})
+
+    # Fetch category & child category names
+    categories = await engine.find(SemiconCategory, SemiconCategory.semicon_category_id.in_(category_ids))
+    category_map = {c.semicon_category_id: c.digikey_name for c in categories}
+
+
+    # Merge names into product data
+    result = []
+    for p in products:
+        result.append({
+            **p.dict(),
+            "category_name": category_map.get(p.semicon_category_id),
+            #"child_category_name": child_category_map.get(p.semicon_child_category_id)
+        })
+
+    return {"status": "success", "data": result}
