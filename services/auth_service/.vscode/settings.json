@@ -1,3 +1,11 @@
 {
-    "zencoder.enableRepoIndexing": true
+    "python.analysis.indexing": false,
+    "python.analysis.memory.keepLibraryAst": false,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.completeFunctionParens": true,
+    "python.analysis.useLibraryCodeForTypes": true,
+    "editor.codeLens": true,
+    "editor.formatOnSave": true,
+    "python.languageServer": "None"
 }
