@@ -34,6 +34,7 @@ class SemiconCategory(Model):
     created_date: Optional[datetime] = None
     modified_date: Optional[datetime] = None
     status: bool = True
+    image_url: Optional[str] = None
 
     model_config = {
         "collection": "categories"
