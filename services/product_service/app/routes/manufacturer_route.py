@@ -10,7 +10,7 @@ from app.schemas.manufacturers_schema import (
     SemiconManufacturerCreateSchema,
     SemiconManufacturerUpdateSchema,
 )
-from app.autogenerate import get_next_manufacturer_counter
+#rom app.counter get_next_manufacturer_counter
 from app.models.semicon_products import SemiconProduct as SemiconProductModel
 from fastapi.encoders import jsonable_encoder
 from app.services.sync_semicon_manufacturers import fetch_and_sync_semicon_manufacturers

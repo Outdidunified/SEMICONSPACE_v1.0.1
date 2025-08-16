@@ -18,11 +18,11 @@ from app.routes.categories_route import router as categories_router
 # from app.routes.pricing_route import router as pricing_router
 # from app.routes.specification_route import router as specification_route
 from app.routes.manufacturer_route import router as manufacturer_route
-from app.autogenerate import get_next_variant_counter
-from app.autogenerate import get_next_category_counter
+from app.autogenerate import initialize_counters
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 
 
@@ -34,9 +34,6 @@ async def lifespan(app: FastAPI):
         try:
             await start_kafka()
             logger.info("✅ Kafka producer started")
-            
-            print(await get_next_category_counter())
-            print(await get_next_variant_counter())
             break
         except Exception:
             logger.warning("⏳ Kafka producer not ready, retrying in 3s...", exc_info=True)
@@ -54,7 +51,10 @@ async def lifespan(app: FastAPI):
 
     consumer_task = asyncio.create_task(start_consumer())
     logger.info("🎧 Kafka consumer task launched")
-    
+
+    await initialize_counters()
+    print("✅ Counters initialized")
+
     #await save_digikey_product_to_db()
 
     yield
@@ -78,7 +78,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+#app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # If it's a 200 "failure" response, return it as-is
@@ -124,6 +124,4 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 app.include_router(products_router)
 app.include_router(categories_router)
-# app.include_router(pricing_router)
-# app.include_router(specification_route)
 app.include_router(manufacturer_route)
