@@ -644,7 +644,7 @@ async def check_product_availability(semicon_part_number: str, quantity: int = P
         variants = product_details["data"]["detailed_info"]["ProductVariants"]
         
         # Filter allowed package types (Cut Tape and Tape & Reel)
-        allowed_package_types = ["Cut Tape (CT)", "Tape & Reel (TR)"]
+        allowed_package_types = ["Cut Tape (CT)", "Tape & Reel (TR)","Tray","Bulk", "Tube", "Reel", "Box"]
         matching_variants = [v for v in variants if v["package_type"] in allowed_package_types]
         
         if not matching_variants:
@@ -746,27 +746,41 @@ async def check_product_availability(semicon_part_number: str, quantity: int = P
 @router.get("/fetch/all-products")
 async def get_semicon_products(
     category_id: Optional[str] = Query(None),
-    child_category_id: Optional[str] = Query(None)
+    child_category_id: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),      # page number (default 1)
+    limit: int = Query(20, ge=1, le=100)  # items per page (default 20, max 100)
 ):
     # Build query expression
-    expr = QueryExpression()
+    expr = query.True_()
     if category_id:
         expr &= (SemiconProduct.semicon_category_id == category_id)
     if child_category_id:
         expr &= (SemiconProduct.semicon_child_category_id == child_category_id)
 
-    # Count total matching products (before limiting)
+    # Count total matching products
     total_count = await engine.count(SemiconProduct, expr)
 
-    # Fetch products sorted by created_date DESC (limit 100)
+    # Pagination calculation
+    skip = (page - 1) * limit
+
+    # Fetch paginated products sorted by created_date DESC
     products = await engine.find(
         SemiconProduct,
         expr,
-        sort=SemiconProduct.created_date.desc()
+        sort=SemiconProduct.created_date.desc(),
+        skip=skip,
+        limit=limit
     )
 
     if not products:
-        return {"status": "success", "count": 0, "data": []}
+        return {
+            "status": "success",
+            "page": page,
+            "limit": limit,
+            "total_products": total_count,
+            "total_pages": (total_count + limit - 1) // limit,
+            "data": []
+        }
 
     # Get unique category IDs
     category_ids = list({p.semicon_category_id for p in products})
@@ -785,10 +799,16 @@ async def get_semicon_products(
         result.append({
             **p.dict(),
             "category_name": category_map.get(p.semicon_category_id),
-            # "child_category_name": child_category_map.get(p.semicon_child_category_id)
         })
 
-    return {"status": "success", "Total_product_count": total_count, "data": result}
+    return {
+        "status": "success",
+        "page": page,
+        "limit": limit,
+        "Total_product_count": total_count,
+        "total_pages": (total_count + limit - 1) // limit,
+        "data": result
+    }
 
     
 @router.get("/fetch/new-arrivals")
@@ -838,3 +858,162 @@ async def get_semicon_products(
 
     return {"status": "success", "data": result}
 
+@router.get("/quantity-price2/check/{semicon_part_number:path}/{quantity}")
+async def check_product_availability(semicon_part_number: str, quantity: int = Path(..., ge=1, description="Quantity to check availability for")):
+    """
+    Check if a product exists, has sufficient quantity available, and calculate the total price for all allowed package types using semicon_part_number (excluding Digi-Reel®).
+    Validates the requested quantity against the minimum_order_quantity for each package type.
+    
+    Args:
+        semicon_part_number: The semicon part number of the product
+        quantity: The requested quantity to check availability for
+        
+    Returns:
+        Product details with pricing for all valid package types if available, or error message if not found/insufficient quantity/minimum order not met
+    """
+    try:
+        # Validate quantity
+        if quantity <= 0:
+            raise HTTPException(
+                status_code=400, 
+                detail={"error": True, "message": "Quantity must be greater than 0"}
+            )
+        
+        # Find product by semicon_part_number
+        product = await engine.find_one(SemiconProduct, SemiconProduct.semicon_part_number == semicon_part_number)
+        
+        # Check if product exists
+        if not product:
+            raise HTTPException(
+                status_code=404, 
+                detail={
+                    "error": True, 
+                    "message": "Product not found",
+                    "semicon_part_number": semicon_part_number
+                }
+            )
+        
+        # Check if product has quantity information
+        if product.quantity_available is None:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": "Product quantity information not available",
+                    "semicon_part_number": semicon_part_number
+                }
+            )
+        
+        # Check if sufficient quantity is available
+        if product.quantity_available < quantity:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": f"Insufficient quantity available. Requested: {quantity}, Available: {product.quantity_available}",
+                    "semicon_part_number": semicon_part_number,
+                    "requested_quantity": quantity,
+                    "available_quantity": product.quantity_available
+                }
+            )
+        
+        # Fetch product details to get variants and pricing
+        product_details = await get_product_by_id(semicon_part_number)
+        variants = product_details["data"]["detailed_info"]["ProductVariants"]
+        
+        # Filter allowed package types (all except DigiReel)
+        allowed_package_types = ["Cut Tape (CT)", "Tape & Reel (TR)", "Tray", "Bulk", "Tube", "Reel", "Box"]
+        matching_variants = [v for v in variants if v["package_type"] in allowed_package_types and "DigiReel" not in v["package_type"]]
+        
+        if not matching_variants:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "error": True, 
+                    "message": "No pricing available for supported package types",
+                    "semicon_part_number": semicon_part_number
+                }
+            )
+        
+        # Collect all variants that satisfy the minimum order quantity
+        valid_variants = []
+        for variant in matching_variants:
+            pricing_details = variant.get("pricing_details", {})
+            if not pricing_details or not pricing_details.get("pricing"):
+                continue
+            minimum_order_quantity = pricing_details.get("minimum_order_quantity", 1)
+            if quantity >= minimum_order_quantity:
+                # Find the appropriate pricing tier
+                pricing_tiers = sorted(pricing_details["pricing"], key=lambda x: x["BreakQuantity"])
+                unit_price = None
+                for tier in pricing_tiers:
+                    if quantity >= tier["BreakQuantity"]:
+                        unit_price = tier["UnitPrice"]
+                    else:
+                        break
+                if not unit_price:
+                    unit_price = pricing_tiers[0]["UnitPrice"]  # Default to the lowest tier if quantity is less than minimum
+                
+                # Calculate total price
+                total_price = unit_price * quantity
+                
+                valid_variants.append({
+                    "package_type": variant["package_type"],
+                    "minimum_order_quantity": minimum_order_quantity,
+                    "unit_price": unit_price,
+                    "total_price": total_price
+                })
+        
+        if not valid_variants:
+            # Collect minimum order quantities for error message
+            min_quantities = {
+                v["package_type"]: v.get("pricing_details", {}).get("minimum_order_quantity", 1)
+                for v in matching_variants
+            }
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": True,
+                    "message": f"Requested quantity ({quantity}) is less than the minimum order quantity for available package types: {min_quantities}",
+                    "semicon_part_number": semicon_part_number,
+                    "requested_quantity": quantity,
+                    "minimum_order_quantities": min_quantities
+                }
+            )
+        
+        # Return product details with pricing for all valid variants
+        return {
+            "error": False,
+            "message": "Product available",
+            "data": {
+                "product": {
+                    "id": str(product.id),
+                    "name": product.name,
+                    "semicon_part_number": product.semicon_part_number,
+                    "manufacturer_part_number": product.manufacturerPartNumber,
+                    "manufacturer_name": product.manufacturer_name,
+                    "quantity_available": product.quantity_available,
+                    "currency": product.currency or "INR",  # Fallback to INR if currency is not set
+                    "description": product.description,
+                    "image_url": product.image_url,
+                    "datasheet_url": product.datasheet_url,
+                    "vendor_details": product.vendor_details,
+                    "status": product.status
+                },
+                "requested_quantity": quantity,
+                "variants": valid_variants,
+                "availability_status": "available"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error": True, 
+                "message": f"Error checking product availability: {str(e)}",
+                "semicon_part_number": semicon_part_number
+            }
+        )
