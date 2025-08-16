@@ -296,23 +296,23 @@ async def get_category_counts():
                 "data": []
             }
         )
-@router.get("/categories/getproducts/{category_id}", tags=["Semicon Categories"])
-async def get_products_by_category(category_id: str):
-    products = await engine.find(
-        SemiconProduct,
-        SemiconProduct.semicon_category_id == category_id
-    )
+# @router.get("/categories/getproducts/{category_id}", tags=["Semicon Categories"])
+# async def get_products_by_category(category_id: str):
+#     products = await engine.find(
+#         SemiconProduct,
+#         SemiconProduct.semicon_category_id == category_id
+#     )
 
-    if not products:
-        raise HTTPException(
-            status_code=404,
-            detail={"status": "failure", "message": "No products found for this category"}
-        )
+#     if not products:
+#         raise HTTPException(
+#             status_code=404,
+#             detail={"status": "failure", "message": "No products found for this category"}
+#         )
 
-    return {
-        "status": "success",
-        "data": [product.model_dump() for product in products]
-    }
+#     return {
+#         "status": "success",
+#         "data": [product.model_dump() for product in products]
+#     }
 # @router.get("/semicon_child_categories/getproducts/{semicon_child_category_id}", tags=["Semicon Categories"])
 # async def get_products_by_child_category(semicon_child_category_id: str):
 #     products = await engine.find(
@@ -330,33 +330,33 @@ async def get_products_by_category(category_id: str):
 #         "status": "success",
 #         "data": [product.model_dump() for product in products]
 #     }
-@router.get("/categories/{category_id}/subcategories/{child_category_id}/products", tags=["Semicon Categories"])
-async def get_products_by_category_and_subcategory(category_id: str, child_category_id: str):
-    """
-    Get products where BOTH category and subcategory match
-    """
-    products = await engine.find(
-        SemiconProduct,
-        {
-            "semicon_category_id": category_id,
-            "semicon_child_category_id": child_category_id
-        }
-    )
+# @router.get("/categories/{category_id}/subcategories/{child_category_id}/products", tags=["Semicon Categories"])
+# async def get_products_by_category_and_subcategory(category_id: str, child_category_id: str):
+#     """
+#     Get products where BOTH category and subcategory match
+#     """
+#     products = await engine.find(
+#         SemiconProduct,
+#         {
+#             "semicon_category_id": category_id,
+#             "semicon_child_category_id": child_category_id
+#         }
+#     )
 
-    if not products:
-        raise HTTPException(
-            status_code=200,
-            detail={
-                 "error": False,
-                 "message": "No products found for this category & subcategory",
-                 "data": []
-            }
-        )
+#     if not products:
+#         raise HTTPException(
+#             status_code=200,
+#             detail={
+#                  "error": False,
+#                  "message": "No products found for this category & subcategory",
+#                  "data": []
+#             }
+#         )
 
-    return {
-        "status": "success",
-        "data": [product.model_dump() for product in products]
-    }
+#     return {
+#         "status": "success",
+#         "data": [product.model_dump() for product in products]
+#     }
 @router.get("/get/categories/active", tags=["Semicon Categories"])
 async def get_categories_with_active_products():
     """
@@ -463,4 +463,139 @@ async def get_active_subcategories_for_category(category_id: str):
         "status": "success",
         "count": len(active_subcategories),
         "data": active_subcategories
+    }
+@router.get("/categories/all/index", tags=["Semicon Categories"])
+async def get_all_semicon_categories(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100)
+):
+    """Get all categories with pagination + standardized response format"""
+    try:
+        collection = engine.get_collection(SemiconCategory)
+
+        # Count total categories
+        total_count = await collection.count_documents({})
+
+        # Pagination math
+        skip = (page - 1) * limit
+
+        # Fetch paginated documents
+        categories = await collection.find().skip(skip).limit(limit).to_list(length=limit)
+
+        # Transform raw documents
+        cleaned_data = [transform_category_doc(doc) for doc in categories]
+
+        return {
+            "error": False,
+            "message": "Categories fetched successfully",
+            "page": page,
+            "limit": limit,
+            "total_categories": total_count,
+            "total_pages": (total_count + limit - 1) // limit,
+            "data": jsonable_encoder(cleaned_data)
+        }
+
+    except Exception as e:
+        print(f"Error fetching categories: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": True,
+                "message": f"Failed to fetch categories: {str(e)}",
+                "data": []
+            }
+        )
+
+
+
+@router.get(
+    "/categories/{category_id}/subcategories/{child_category_id}/products", 
+    tags=["Semicon Categories"]
+)
+async def get_products_by_category_and_subcategory(category_id: str, child_category_id: str):
+    """
+    Get products where BOTH category and subcategory match,
+    including category & subcategory names.
+    """
+    # Fetch products
+    products = await engine.find(
+        SemiconProduct,
+        {
+            "semicon_category_id": category_id,
+            "semicon_child_category_id": child_category_id
+        }
+    )
+
+    if not products:
+        return {
+            "status": "success",
+            "message": "No products found for this category & subcategory",
+            "data": []
+        }
+
+    # Fetch category (with embedded children)
+    category = await engine.find_one(
+        SemiconCategory, 
+        SemiconCategory.semicon_category_id == category_id
+    )
+
+    category_name = category.digikey_name if category else None
+    subcategory_name = None
+
+    # ✅ find the matching child inside `category.child_categories`
+    if category and hasattr(category, "child_categories"):
+        for child in category.child_categories:
+            if child.semicon_child_category_id == child_category_id:
+                subcategory_name = child.digikey_child_name
+                break
+
+    # Merge category + subcategory names into product data
+    result = []
+    for p in products:
+        prod_dict = p.dict()
+        prod_dict["category_name"] = category_name
+        prod_dict["subcategory_name"] = subcategory_name
+        result.append(prod_dict)
+
+    return {
+        "status": "success",
+        "total_products": len(result),
+        "data": result
+    }
+@router.get("/categories/getproducts/{category_id}", tags=["Semicon Categories"])
+async def get_products_by_category(category_id: str):
+    # 1. Get products in this category
+    products = await engine.find(
+        SemiconProduct,
+        SemiconProduct.semicon_category_id == category_id
+    )
+
+    if not products:
+        raise HTTPException(
+            status_code=404,
+            detail={"status": "failure", "message": "No products found for this category"}
+        )
+
+    # 2. Fetch category name
+    category = await engine.find_one(SemiconCategory, SemiconCategory.semicon_category_id == category_id)
+    category_name = category.digikey_name if category else None
+
+    # # 3. Collect all child_category_ids from products
+    # child_ids = list({p.semicon_child_category_id for p in products if p.semicon_child_category_id})
+
+    # # 4. Fetch child categories in bulk
+    # child_categories = await engine.find(SemiconChildCategory, SemiconChildCategory.semicon_child_category_id.in_(child_ids))
+    # child_map = {c.semicon_child_category_id: c.name for c in child_categories}
+
+    # 5. Format response with names
+    product_list = []
+    for p in products:
+        product_data = p.model_dump()
+        product_data["category_name"] = category_name
+        # product_data["child_category_name"] = child_map.get(p.semicon_child_category_id)
+        product_list.append(product_data)
+
+    return {
+        "status": "success",
+        "data": product_list
     }

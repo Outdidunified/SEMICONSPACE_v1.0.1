@@ -92,7 +92,7 @@ async def build_child_category_tree(db, parent_id):
     for child in children:
         child_list.append({
             "categoryId": child.digikey_child_category_id,
-            "name": child.digikey_name,
+            "name": child.digikey_child_name,
             "parentId": child.digikey_parent_id,
             "productCount": getattr(child, "product_count", 0),
             "imageUrl": getattr(child, "image_url", ""),
@@ -371,7 +371,8 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
 
     # Update listing product with vendor details
     listing_product.vendor_details.append(vpid)
-    await db.save(listing_product)
+    result = await db.save(listing_product)
+    print(f"result: {result}")
 
     # Prepare Kafka event
     sb = None
