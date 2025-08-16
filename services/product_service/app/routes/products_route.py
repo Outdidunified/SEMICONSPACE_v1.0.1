@@ -1046,7 +1046,7 @@ async def get_top_products():
 
         top_products = analytics_data.get("data", {}).get("topProducts", [])[:6]
         if not top_products:
-            return {"status": "success", "data": []}
+            return {"error": "true", "message": "No top products found", "status": "success", "data": []}
 
         # 2. Extract product_ids
         product_ids = [p["product_id"] for p in top_products]
@@ -1057,7 +1057,7 @@ async def get_top_products():
             SemiconProduct.semicon_part_number.in_(product_ids)
         )
         if not products:
-            return {"status": "success", "data": []}
+            return {"error": "true", "message": "No products found", "status": "success", "data": []}
 
         # Build category map
         category_ids = list({p.semicon_category_id for p in products})
@@ -1076,7 +1076,10 @@ async def get_top_products():
                     "total_unit_sold": tp["total_sold"],
                 })
 
-        return {"status": "success", "data": result}
+        return {"error": "false",
+                "message": "Top products fetched successfully",
+                "status": "success",
+                "data": result}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
