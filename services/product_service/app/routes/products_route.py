@@ -1077,7 +1077,8 @@ async def get_top_products():
                 })
 
         return {"error": "false",
-                "status": "success", 
+                "message": "Top products fetched successfully",
+                "status": "success",
                 "data": result}
 
     except Exception as e:
