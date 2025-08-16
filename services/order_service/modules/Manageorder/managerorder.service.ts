@@ -301,21 +301,25 @@ startOfWeek.setHours(0, 0, 0, 0);
     });
 
     // TOP 10 products
-    const topProducts = await this.orderModel.sequelize.query(
-      `
-      SELECT
-        item->>'productId' AS product_id,
-        item->>'name' AS product_name,
-        SUM((item->>'qty')::int) AS total_sold,
-        SUM((item->>'totalPrice')::numeric) AS total_revenue
-      FROM "Order",
-      LATERAL jsonb_array_elements(items) AS item
-      GROUP BY product_id, product_name
-      ORDER BY total_sold DESC
-      LIMIT 10;
-      `,
-      { type: QueryTypes.SELECT }
-    );
+  const topProducts = await this.orderModel.sequelize.query(
+  `
+  SELECT
+    item->>'productId' AS product_id,
+    item->>'name' AS product_name,
+    item->>'package_type' AS package_type,
+    item->>'manufacturerPartNumber' AS manufacturer_part_number,
+    item->>'manufacturerName' AS manufacturer_name,
+    SUM((item->>'qty')::int) AS total_sold,
+    SUM((item->>'totalPrice')::numeric) AS total_revenue
+  FROM "Order",
+  LATERAL jsonb_array_elements(items) AS item
+  GROUP BY product_id, product_name, package_type, manufacturer_part_number, manufacturer_name
+  ORDER BY total_sold DESC
+  LIMIT 10;
+  `,
+  { type: QueryTypes.SELECT }
+);
+
 
     return {
       statusCode: 200,
