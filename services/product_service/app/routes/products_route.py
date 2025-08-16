@@ -16,6 +16,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional
 from bson import ObjectId
 from app.kafka.kafka_producer import send_event
+from app.models.categories_models import SemiconCategory, SemiconChildCategory
 import asyncio
 from datetime import datetime
 router = APIRouter(prefix="/product")
@@ -512,7 +513,7 @@ async def search_and_get_details(query: str):
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Request error: {str(e)}")  
     
-from app.models.categories_models import SemiconCategory, SemiconChildCategory
+
 async def get_category_counts():
     """Get counts of all categories and subcategories with names"""
         # Access the raw MongoDB collection to bypass odmantic validation
@@ -560,7 +561,7 @@ async def get_category_counts():
         total_child_categories
     }
     
-from app.models.manufacturers_models import SemiconManufacturer
+
 @router.get("/analytics/count/all")
 async def get_all_counts():
     collection = engine.get_collection(SemiconManufacturer)
@@ -1030,3 +1031,52 @@ async def check_product_availability(semicon_part_number: str, quantity: int = P
                 "semicon_part_number": semicon_part_number
             }
         )
+
+
+@router.get("/fetch/top-products")
+async def get_top_products():
+    try:
+        ANALYTICS_API = "http://172.232.102.237:8006/order/admin/analytics"
+        # 1. Call Analytics API
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(ANALYTICS_API)
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail="Failed to fetch analytics data")
+            analytics_data = response.json()
+
+        top_products = analytics_data.get("data", {}).get("topProducts", [])[:6]
+        if not top_products:
+            return {"status": "success", "data": []}
+
+        # 2. Extract product_ids
+        product_ids = [p["product_id"] for p in top_products]
+
+        # 3. Fetch products from DB by semicon_part_number
+        products = await engine.find(
+            SemiconProduct,
+            SemiconProduct.semicon_part_number.in_(product_ids)
+        )
+        if not products:
+            return {"status": "success", "data": []}
+
+        # Build category map
+        category_ids = list({p.semicon_category_id for p in products})
+        categories = await engine.find(SemiconCategory, SemiconCategory.semicon_category_id.in_(category_ids))
+        category_map = {c.semicon_category_id: c.digikey_name for c in categories}
+
+        # 4. Merge analytics data + DB product data
+        product_map = {p.semicon_part_number: p for p in products}
+        result = []
+        for tp in top_products:
+            db_product = product_map.get(tp["product_id"])
+            if db_product:
+                result.append({
+                    **db_product.dict(),
+                    "category_name": category_map.get(db_product.semicon_category_id),
+                    "total_unit_sold": tp["total_sold"],
+                })
+
+        return {"status": "success", "data": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

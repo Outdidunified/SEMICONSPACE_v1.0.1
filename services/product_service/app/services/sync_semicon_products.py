@@ -14,11 +14,9 @@ from app.models.variant_pricing_models import SemiconProductVariantPricing, Pric
 from app.models.vendors_product_variant_parameters import VendorProductVariantParameter
 from app.models.product_varianants import VendorProduct as VendorProductVariant, Supplier as VariantSupplier
 from app.models.vendor_product_variants_models import VendorProduct, Parameter as VariantParameter
-from app.autogenerate import (
+from app.counter import (
     get_next_category_counter,
     get_next_manufacturer_counter,
-    get_next_product_counter,
-    get_next_vendor_product_counter,
     get_next_variant_counter,
     get_next_pricing_counter,
     get_next_parameter_counter,
@@ -126,7 +124,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
         SemiconCategory.digikey_category_id == category_info.get("categoryId")
     )
     if not category:
-        semicon_category_id = f"SCID-{await get_next_category_counter(db)}"
+        semicon_category_id = f"SCID-{await get_next_category_counter()}"
         category = SemiconCategory(
             semicon_category_id=semicon_category_id,
             semicon_parent_id=None,
@@ -151,7 +149,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
     )
     manu_s_id = manufacturer.semicon_manufacturer_id if manufacturer else None
     if not manufacturer:
-        semicon_manufacturer_id = f"SMID-{await get_next_manufacturer_counter(db)}"
+        semicon_manufacturer_id = f"SMID-{await get_next_manufacturer_counter()}"
         manufacturer = SemiconManufacturer(
             semicon_manufacturer_id=semicon_manufacturer_id,
             digikey_manufacturer_id=manu_id or 0,
@@ -199,7 +197,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
     first_variation = digikey_data['productVariations'][0]
     first_price_tier = first_variation['StandardPricing'][0]
     first_unit_price = first_price_tier['UnitPrice']
-    spid = f"SPID-{await get_next_product_counter(db)}"
+    #pid = f"SPID-{await get_next_product_counter()}"
     semicon_part_number = f"SPNID-{digikey_data.get('manufacturerPartNumber', 'UNKNOWN')}"
     listing_product = SemiconProductListing(
         name=digikey_data.get("name", ""),
@@ -266,7 +264,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
     await db.save(details)
 
     # -------- VENDOR PRODUCT --------
-    vpid = f"SVPID-{await  get_vendor_id(db)}"
+    vpid = f"SVPID-{await  get_vendor_id()}"
     print(vpid)
     
     vendor_product = VendorProduct(
@@ -284,24 +282,20 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
 
     all_parameters = []
     variant_ids = []
-    parameter_counter = await get_next_parameter_counter(db)
-    variant_counter = await get_next_variant_counter(db)
+
     
     # Set to track unique parameters (based on ParameterId, ValueId, ValueText)
     unique_params = set()
 
     for variation in digikey_data.get("productVariations", []):
-        variant_id = f"SPVID-{variant_counter}"
-        variant_counter += 1
+        variant_id = f"SPVID-{await get_next_variant_counter()}"
         vendor_part_number = variation.get("digiKeyPartNumber") or variation.get("DigiKeyProductNumber") or variation.get("productNumber") or "UNKNOWN"
         supplier_id, supplier_name = parse_manufacturer(variation.get("Supplier") or digikey_data.get("Manufacturer"))
 
         # Process parameters only once for the first variant, as they are shared
         if not all_parameters:  # Only process parameters if not already populated
             for param in digikey_data.get("parameters", []):  # Use top-level parameters
-                spara_id = f"SPARAID-{parameter_counter}"
-                parameter_counter += 1
-
+                spara_id = f"SPARAID-{await get_next_parameter_counter()}"
                 # Save parameter doc
                 param_doc = VendorProductVariantParameter(
                     semicon_parameter_id=spara_id,
@@ -341,12 +335,12 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
             created_by="admin",
             modified_by="admin",
             status=True,
-             package_type=package_type,
+            package_type=package_type,
             semicon_product_variant_pricing_id=[]
         )
 
         # Create pricing for variant (as in old logic)
-        spvpid = f"SPVPID-{await get_next_pricing_counter(db)}"
+        spvpid = f"SPVPID-{await get_next_pricing_counter()}"
         
         pricing_doc = SemiconProductVariantPricing(
             #package_type=package_type,
@@ -371,8 +365,7 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
 
     # Update listing product with vendor details
     listing_product.vendor_details.append(vpid)
-    result = await db.save(listing_product)
-    print(f"result: {result}")
+    await db.save(listing_product)
 
     # Prepare Kafka event
     sb = None
@@ -388,4 +381,5 @@ async def fetch_and_sync_semicon_product(digikey_data: dict):
     }
 
     await send_event(topic="product.added", value=all_data_dict)
+   
     return listing_product
