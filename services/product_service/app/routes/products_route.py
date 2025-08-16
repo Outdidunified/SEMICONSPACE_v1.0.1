@@ -750,27 +750,40 @@ async def get_semicon_products(
     page: int = Query(1, ge=1),      # page number (default 1)
     limit: int = Query(20, ge=1, le=100)  # items per page (default 20, max 100)
 ):
-    # Build query expression
-    expr = query.True_()
-    if category_id:
-        expr &= (SemiconProduct.semicon_category_id == category_id)
-    if child_category_id:
-        expr &= (SemiconProduct.semicon_child_category_id == child_category_id)
+    # Build query expression conditionally
+    expr = None
+    if category_id and child_category_id:
+        expr = (SemiconProduct.semicon_category_id == category_id) & (SemiconProduct.semicon_child_category_id == child_category_id)
+    elif category_id:
+        expr = (SemiconProduct.semicon_category_id == category_id)
+    elif child_category_id:
+        expr = (SemiconProduct.semicon_child_category_id == child_category_id)
 
     # Count total matching products
-    total_count = await engine.count(SemiconProduct, expr)
+    if expr is not None:
+        total_count = await engine.count(SemiconProduct, expr)
+    else:
+        total_count = await engine.count(SemiconProduct)
 
     # Pagination calculation
     skip = (page - 1) * limit
 
     # Fetch paginated products sorted by created_date DESC
-    products = await engine.find(
-        SemiconProduct,
-        expr,
-        sort=SemiconProduct.created_date.desc(),
-        skip=skip,
-        limit=limit
-    )
+    if expr is not None:
+        products = await engine.find(
+            SemiconProduct,
+            expr,
+            sort=SemiconProduct.created_date.desc(),
+            skip=skip,
+            limit=limit
+        )
+    else:
+        products = await engine.find(
+            SemiconProduct,
+            sort=SemiconProduct.created_date.desc(),
+            skip=skip,
+            limit=limit
+        )
 
     if not products:
         return {
